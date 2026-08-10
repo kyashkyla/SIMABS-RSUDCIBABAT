@@ -1,9 +1,13 @@
 <script setup>
-import { Head, Link } from '@inertiajs/vue3'
+import { Head, Link, router } from '@inertiajs/vue3'
 import { ref } from 'vue'
 
 const username = ref('')
 const password = ref('')
+
+const goDashboard = () => {
+    router.visit(route('admin.dashboard'))
+}
 </script>
 
 <template>
@@ -15,25 +19,10 @@ const password = ref('')
 
             <!-- ================= LEFT ================= -->
 
-            <div
-                class="relative bg-gradient-to-br from-emerald-500 via-emerald-500 to-teal-400 text-white p-12">
+            <div class="relative bg-gradient-to-br from-emerald-500 via-emerald-500 to-teal-400 text-white p-12">
 
-                <div
-                    class="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center mb-6">
-
-                    <svg xmlns="http://www.w3.org/2000/svg"
-                        class="w-7 h-7"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor">
-
-                        <path stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M12 11c0 3.866-3.582 7-8 7a1 1 0 010-2c3.314 0 6-2.239 6-5s-2.686-5-6-5a1 1 0 010-2c4.418 0 8 3.134 8 7zm0 0h8m-8 0v8m0-8V3"/>
-
-                    </svg>
-
+                <div class="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center mb-6">
+                    🏥
                 </div>
 
                 <p class="font-semibold text-lg">
@@ -45,18 +34,12 @@ const password = ref('')
                 </p>
 
                 <h1 class="text-5xl font-bold leading-tight mb-6">
-
                     Portal Administrator
-
                 </h1>
 
                 <p class="text-lg opacity-90 leading-8">
-
-                    Akses penuh untuk manajemen data pegawai,
-                    monitoring absensi,
-                    persetujuan absensi alternatif,
-                    serta pelaporan sistem.
-
+                    Akses penuh untuk manajemen data pegawai, monitoring absensi,
+                    persetujuan absensi alternatif, serta pelaporan sistem.
                 </p>
 
                 <div class="mt-10 space-y-4">
@@ -82,27 +65,18 @@ const password = ref('')
                 <div class="grid grid-cols-3 gap-4 mt-12">
 
                     <div class="bg-white/10 rounded-xl text-center py-5">
-
                         <h2 class="text-3xl font-bold">132</h2>
-
                         <p>Pegawai</p>
-
                     </div>
 
                     <div class="bg-white/10 rounded-xl text-center py-5">
-
                         <h2 class="text-3xl font-bold">98%</h2>
-
                         <p>Akurasi</p>
-
                     </div>
 
                     <div class="bg-white/10 rounded-xl text-center py-5">
-
                         <h2 class="text-3xl font-bold">24/7</h2>
-
                         <p>Online</p>
-
                     </div>
 
                 </div>
@@ -115,62 +89,55 @@ const password = ref('')
 
                 <div class="w-full">
 
-                    <div
-                        class="w-16 h-16 rounded-2xl bg-emerald-100 flex items-center justify-center mb-6">
-
+                    <div class="w-16 h-16 rounded-2xl bg-emerald-100 flex items-center justify-center mb-6 text-3xl">
                         🛡️
-
                     </div>
 
                     <h2 class="text-4xl font-bold text-slate-800">
-
                         Masuk Admin
-
                     </h2>
 
                     <p class="text-slate-500 mt-2">
-
                         Khusus untuk administrator sistem
-
                     </p>
 
-                    <form class="mt-10 space-y-6">
+                    <!-- FORM -->
+
+                    <form @submit.prevent="goDashboard" class="mt-10 space-y-6">
 
                         <div>
 
                             <label class="font-medium">
-
                                 Username Administrator
-
                             </label>
 
                             <input
                                 v-model="username"
                                 type="text"
                                 placeholder="Masukkan username"
-                                class="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none"/>
+                                class="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                            />
 
                         </div>
 
                         <div>
 
                             <label class="font-medium">
-
                                 Password
-
                             </label>
 
                             <input
                                 v-model="password"
                                 type="password"
                                 placeholder="Masukkan password"
-                                class="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none"/>
+                                class="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                            />
 
                         </div>
 
                         <button
                             type="submit"
-                            class="w-full bg-gradient-to-r from-emerald-500 to-green-500 text-white rounded-xl py-3 font-semibold hover:scale-[1.02] transition">
+                            class="w-full bg-gradient-to-r from-emerald-500 to-green-500 text-white rounded-xl py-3 font-semibold hover:from-emerald-600 hover:to-green-600 transition">
 
                             Masuk sebagai Admin
 
@@ -178,11 +145,8 @@ const password = ref('')
 
                     </form>
 
-                    <div
-                        class="mt-6 bg-yellow-100 text-yellow-700 rounded-xl p-4 text-sm">
-
+                    <div class="mt-6 bg-yellow-100 text-yellow-700 rounded-xl p-4 text-sm">
                         ⚠️ Akses hanya diperuntukkan bagi Administrator RSUD Cibabat.
-
                     </div>
 
                     <div class="text-center mt-8 text-gray-500">
@@ -218,4 +182,5 @@ const password = ref('')
         </div>
 
     </div>
+
 </template>
