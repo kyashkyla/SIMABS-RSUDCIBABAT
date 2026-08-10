@@ -1,0 +1,632 @@
+<script setup>
+import { Head, Link, useForm } from '@inertiajs/vue3'
+import AdminLayout from '@/Layouts/AdminLayout.vue'
+
+const form = useForm({
+    nip: '',
+    name: '',
+    nik: '',
+    email: '',
+    phone: '',
+    gender: '',
+    position: '',
+    department: '',
+    status: 'Aktif',
+    start_date: '',
+    shift: '',
+})
+
+const submitForm = () => {
+    form.post(route('admin.employees.store'))
+}
+</script>
+
+<template>
+    <Head title="Tambah Pegawai" />
+
+    <AdminLayout>
+
+        <!-- ================= HEADER ================= -->
+
+        <div class="flex items-center gap-4 mb-8">
+
+            <Link
+                href="/admin/pegawai"
+                class="w-10 h-10 rounded-xl bg-white border border-slate-200
+                       flex items-center justify-center
+                       text-slate-600 hover:bg-slate-50 transition">
+
+                ←
+
+            </Link>
+
+            <div>
+
+                <h1 class="text-3xl font-bold text-slate-800">
+                    Tambah Pegawai
+                </h1>
+
+                <p class="text-slate-500 mt-1">
+                    Tambahkan data pegawai baru ke dalam sistem SIMABS.
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <!-- ================= FORM ================= -->
+
+        <form
+            @submit.prevent="submitForm"
+            class="space-y-6">
+
+
+            <!-- ================= DATA IDENTITAS ================= -->
+
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+
+                <div class="flex items-center gap-3 mb-6">
+
+                    <div
+                        class="w-10 h-10 rounded-xl bg-emerald-100
+                               text-emerald-600 flex items-center justify-center">
+
+                        👤
+
+                    </div>
+
+                    <div>
+
+                        <h2 class="text-xl font-bold text-slate-800">
+                            Data Identitas
+                        </h2>
+
+                        <p class="text-sm text-slate-500">
+                            Informasi dasar pegawai
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+
+                    <!-- NIP -->
+
+                    <div>
+
+                        <label class="block text-sm font-medium text-slate-700 mb-2">
+                            NIP
+                        </label>
+
+                        <input
+                            v-model="form.nip"
+                            type="text"
+                            placeholder="Masukkan NIP"
+                            class="w-full rounded-xl border border-slate-200
+                                   px-4 py-3
+                                   focus:outline-none
+                                   focus:ring-2 focus:ring-emerald-500"
+                        />
+
+                        <p
+                            v-if="form.errors.nip"
+                            class="text-sm text-red-500 mt-1">
+
+                            {{ form.errors.nip }}
+
+                        </p>
+
+                    </div>
+
+
+                    <!-- Nama -->
+
+                    <div>
+
+                        <label class="block text-sm font-medium text-slate-700 mb-2">
+                            Nama Lengkap
+                        </label>
+
+                        <input
+                            v-model="form.name"
+                            type="text"
+                            placeholder="Masukkan nama lengkap"
+                            class="w-full rounded-xl border border-slate-200
+                                   px-4 py-3
+                                   focus:outline-none
+                                   focus:ring-2 focus:ring-emerald-500"
+                        />
+
+                        <p
+                            v-if="form.errors.name"
+                            class="text-sm text-red-500 mt-1">
+
+                            {{ form.errors.name }}
+
+                        </p>
+
+                    </div>
+
+
+                    <!-- NIK -->
+
+                    <div>
+
+                        <label class="block text-sm font-medium text-slate-700 mb-2">
+                            NIK
+                        </label>
+
+                        <input
+                            v-model="form.nik"
+                            type="text"
+                            placeholder="Masukkan NIK"
+                            class="w-full rounded-xl border border-slate-200
+                                   px-4 py-3
+                                   focus:outline-none
+                                   focus:ring-2 focus:ring-emerald-500"
+                        />
+
+                        <p
+                            v-if="form.errors.nik"
+                            class="text-sm text-red-500 mt-1">
+
+                            {{ form.errors.nik }}
+
+                        </p>
+
+                    </div>
+
+
+                    <!-- Email -->
+
+                    <div>
+
+                        <label class="block text-sm font-medium text-slate-700 mb-2">
+                            Email
+                        </label>
+
+                        <input
+                            v-model="form.email"
+                            type="email"
+                            placeholder="contoh@email.com"
+                            class="w-full rounded-xl border border-slate-200
+                                   px-4 py-3
+                                   focus:outline-none
+                                   focus:ring-2 focus:ring-emerald-500"
+                        />
+
+                        <p
+                            v-if="form.errors.email"
+                            class="text-sm text-red-500 mt-1">
+
+                            {{ form.errors.email }}
+
+                        </p>
+
+                    </div>
+
+
+                    <!-- No HP -->
+
+                    <div>
+
+                        <label class="block text-sm font-medium text-slate-700 mb-2">
+                            Nomor HP
+                        </label>
+
+                        <input
+                            v-model="form.phone"
+                            type="text"
+                            placeholder="08xxxxxxxxxx"
+                            class="w-full rounded-xl border border-slate-200
+                                   px-4 py-3
+                                   focus:outline-none
+                                   focus:ring-2 focus:ring-emerald-500"
+                        />
+
+                        <p
+                            v-if="form.errors.phone"
+                            class="text-sm text-red-500 mt-1">
+
+                            {{ form.errors.phone }}
+
+                        </p>
+
+                    </div>
+
+
+                    <!-- Jenis Kelamin -->
+
+                    <div>
+
+                        <label class="block text-sm font-medium text-slate-700 mb-2">
+                            Jenis Kelamin
+                        </label>
+
+                        <select
+                            v-model="form.gender"
+                            class="w-full rounded-xl border border-slate-200
+                                   px-4 py-3
+                                   focus:outline-none
+                                   focus:ring-2 focus:ring-emerald-500">
+
+                            <option value="">
+                                Pilih jenis kelamin
+                            </option>
+
+                            <option value="Laki-laki">
+                                Laki-laki
+                            </option>
+
+                            <option value="Perempuan">
+                                Perempuan
+                            </option>
+
+                        </select>
+
+                        <p
+                            v-if="form.errors.gender"
+                            class="text-sm text-red-500 mt-1">
+
+                            {{ form.errors.gender }}
+
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- ================= DATA KEPEGAWAIAN ================= -->
+
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+
+                <div class="flex items-center gap-3 mb-6">
+
+                    <div
+                        class="w-10 h-10 rounded-xl bg-blue-100
+                               text-blue-600 flex items-center justify-center">
+
+                        💼
+
+                    </div>
+
+                    <div>
+
+                        <h2 class="text-xl font-bold text-slate-800">
+                            Data Kepegawaian
+                        </h2>
+
+                        <p class="text-sm text-slate-500">
+                            Informasi jabatan dan unit kerja
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+
+                    <!-- Jabatan -->
+
+                    <div>
+
+                        <label class="block text-sm font-medium text-slate-700 mb-2">
+                            Jabatan
+                        </label>
+
+                        <input
+                            v-model="form.position"
+                            type="text"
+                            placeholder="Contoh: Perawat"
+                            class="w-full rounded-xl border border-slate-200
+                                   px-4 py-3
+                                   focus:outline-none
+                                   focus:ring-2 focus:ring-emerald-500"
+                        />
+
+                        <p
+                            v-if="form.errors.position"
+                            class="text-sm text-red-500 mt-1">
+
+                            {{ form.errors.position }}
+
+                        </p>
+
+                    </div>
+
+
+                    <!-- Departemen -->
+
+                    <div>
+
+                        <label class="block text-sm font-medium text-slate-700 mb-2">
+                            Departemen
+                        </label>
+
+                        <select
+                            v-model="form.department"
+                            class="w-full rounded-xl border border-slate-200
+                                   px-4 py-3
+                                   focus:outline-none
+                                   focus:ring-2 focus:ring-emerald-500">
+
+                            <option value="">
+                                Pilih departemen
+                            </option>
+
+                            <option value="IGD">
+                                IGD
+                            </option>
+
+                            <option value="Radiologi">
+                                Radiologi
+                            </option>
+
+                            <option value="Farmasi">
+                                Farmasi
+                            </option>
+
+                            <option value="Rawat Inap">
+                                Rawat Inap
+                            </option>
+
+                            <option value="Administrasi">
+                                Administrasi
+                            </option>
+
+                        </select>
+
+                        <p
+                            v-if="form.errors.department"
+                            class="text-sm text-red-500 mt-1">
+
+                            {{ form.errors.department }}
+
+                        </p>
+
+                    </div>
+
+
+                    <!-- Status -->
+
+                    <div>
+
+                        <label class="block text-sm font-medium text-slate-700 mb-2">
+                            Status Pegawai
+                        </label>
+
+                        <select
+                            v-model="form.status"
+                            class="w-full rounded-xl border border-slate-200
+                                   px-4 py-3
+                                   focus:outline-none
+                                   focus:ring-2 focus:ring-emerald-500">
+
+                            <option value="Aktif">
+                                Aktif
+                            </option>
+
+                            <option value="Nonaktif">
+                                Nonaktif
+                            </option>
+
+                        </select>
+
+                        <p
+                            v-if="form.errors.status"
+                            class="text-sm text-red-500 mt-1">
+
+                            {{ form.errors.status }}
+
+                        </p>
+
+                    </div>
+
+
+                    <!-- Tanggal Masuk -->
+
+                    <div>
+
+                        <label class="block text-sm font-medium text-slate-700 mb-2">
+                            Tanggal Mulai Bekerja
+                        </label>
+
+                        <input
+                            v-model="form.start_date"
+                            type="date"
+                            class="w-full rounded-xl border border-slate-200
+                                   px-4 py-3
+                                   focus:outline-none
+                                   focus:ring-2 focus:ring-emerald-500"
+                        />
+
+                        <p
+                            v-if="form.errors.start_date"
+                            class="text-sm text-red-500 mt-1">
+
+                            {{ form.errors.start_date }}
+
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- ================= SHIFT ================= -->
+
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+
+                <div class="flex items-center gap-3 mb-6">
+
+                    <div
+                        class="w-10 h-10 rounded-xl bg-orange-100
+                               text-orange-600 flex items-center justify-center">
+
+                        🕐
+
+                    </div>
+
+                    <div>
+
+                        <h2 class="text-xl font-bold text-slate-800">
+                            Pengaturan Shift
+                        </h2>
+
+                        <p class="text-sm text-slate-500">
+                            Tentukan shift kerja pegawai
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div>
+
+                    <label class="block text-sm font-medium text-slate-700 mb-2">
+                        Shift Kerja
+                    </label>
+
+                    <select
+                        v-model="form.shift"
+                        class="w-full md:w-1/2 rounded-xl border border-slate-200
+                               px-4 py-3
+                               focus:outline-none
+                               focus:ring-2 focus:ring-emerald-500">
+
+                        <option value="">
+                            Pilih shift
+                        </option>
+
+                        <option value="Pagi">
+                            Shift Pagi
+                        </option>
+
+                        <option value="Siang">
+                            Shift Siang
+                        </option>
+
+                        <option value="Malam">
+                            Shift Malam
+                        </option>
+
+                    </select>
+
+                    <p
+                        v-if="form.errors.shift"
+                        class="text-sm text-red-500 mt-1">
+
+                        {{ form.errors.shift }}
+
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <!-- ================= FACE ID ================= -->
+
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+
+                <div class="flex items-center gap-3 mb-6">
+
+                    <div
+                        class="w-10 h-10 rounded-xl bg-purple-100
+                               text-purple-600 flex items-center justify-center">
+
+                        😊
+
+                    </div>
+
+                    <div>
+
+                        <h2 class="text-xl font-bold text-slate-800">
+                            Registrasi Face ID
+                        </h2>
+
+                        <p class="text-sm text-slate-500">
+                            Data wajah dapat didaftarkan setelah data pegawai dibuat.
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div
+                    class="rounded-xl bg-purple-50 border border-purple-100 p-5">
+
+                    <div class="flex gap-4">
+
+                        <div class="text-2xl">
+                            ℹ️
+                        </div>
+
+                        <div>
+
+                            <h3 class="font-semibold text-purple-800">
+                                Registrasi Face ID
+                            </h3>
+
+                            <p class="text-sm text-purple-700 mt-1 leading-6">
+                                Setelah pegawai berhasil ditambahkan,
+                                administrator dapat melakukan registrasi
+                                wajah pegawai melalui menu Face ID.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- ================= BUTTON ================= -->
+
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pb-8">
+
+                <Link
+                    href="/admin/pegawai"
+                    class="px-6 py-3 rounded-xl
+                           border border-slate-200
+                           bg-white text-slate-600
+                           font-semibold text-center
+                           hover:bg-slate-50 transition">
+
+                    Batal
+
+                </Link>
+
+                <button
+                    type="submit"
+                    :disabled="form.processing"
+                    class="px-6 py-3 rounded-xl
+                           bg-emerald-500 hover:bg-emerald-600
+                           text-white font-semibold
+                           transition disabled:opacity-50">
+
+                    {{ form.processing ? 'Menyimpan...' : 'Simpan Pegawai' }}
+
+                </button>
+
+            </div>
+
+        </form>
+
+    </AdminLayout>
+</template>

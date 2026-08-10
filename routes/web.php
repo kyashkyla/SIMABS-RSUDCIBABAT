@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\EmployeeController;
 use App\Http\Controllers\Pegawai\DashboardController as PegawaiDashboardController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -27,6 +28,45 @@ Route::get('/admin/dashboard', function () {
     return Inertia::render('Auth/Admin/Dashboard');
 })->name('admin.dashboard');
 
+Route::get('/admin/pegawai', [EmployeeController::class, 'index'])
+    ->name('admin.employees');
+
+Route::get('/admin/pegawai/create', [EmployeeController::class, 'create'])
+    ->name('admin.employees.create');
+
+Route::post('/admin/pegawai', [EmployeeController::class, 'store'])
+    ->name('admin.employees.store');
+
+Route::get('/admin/pegawai/{employee}', [EmployeeController::class, 'show'])
+    ->name('admin.employees.show');
+
+Route::get('/admin/pegawai/{employee}/edit', [EmployeeController::class, 'edit'])
+    ->name('admin.employees.edit');
+
+Route::put('/admin/pegawai/{employee}', [EmployeeController::class, 'update'])
+    ->name('admin.employees.update');
+
+Route::delete('/admin/pegawai/{employee}', [EmployeeController::class, 'destroy'])
+    ->name('admin.employees.destroy');
+
+Route::get('/admin/pegawai/{employee}/delete', [EmployeeController::class, 'deleteConfirm'])
+    ->name('admin.employees.delete');
+    
+Route::get('/admin/pegawai/{employee}/reset-password', function (\App\Models\Employee $employee) {
+    return Inertia::render('Admin/Employee/ResetPassword', [
+        'employee' => $employee->load('user'),
+    ]);
+})->name('admin.employees.reset-password');
+
+Route::put('/admin/pegawai/{employee}/reset-password', [EmployeeController::class, 'resetPassword'])
+    ->name('admin.employees.reset-password.update');
+    
+Route::get('/admin/pegawai/{employee}/reset-password', [EmployeeController::class, 'resetPasswordForm'])
+    ->name('admin.employees.reset-password');
+
+Route::put('/admin/pegawai/{employee}/reset-password', [EmployeeController::class, 'resetPassword'])
+    ->name('admin.employees.reset-password.update');
+    
 // Pegawai
 Route::middleware(['auth', 'role:pegawai'])->group(function () {
     Route::get('/pegawai/dashboard', [PegawaiDashboardController::class, 'index'])
