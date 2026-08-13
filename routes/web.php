@@ -4,6 +4,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\EmployeeController;
 use App\Http\Controllers\Pegawai\DashboardController as PegawaiDashboardController;
+use App\Http\Controllers\Admin\ReportController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -66,7 +67,28 @@ Route::get('/admin/pegawai/{employee}/reset-password', [EmployeeController::clas
 
 Route::put('/admin/pegawai/{employee}/reset-password', [EmployeeController::class, 'resetPassword'])
     ->name('admin.employees.reset-password.update');
-    
+
+    // admin-persetujuan
+Route::get('/admin/persetujuan-absensi', function () {
+    return Inertia::render('Auth/Admin/Approval/Index');
+})->name('admin.approvals.index');
+
+Route::get('/admin/persetujuan-absensi/{id}', function ($id) {
+    return Inertia::render('Auth/Admin/Approval/Show', [
+        'id' => $id,
+    ]);
+})->name('admin.approvals.show');
+
+    // admin-riwayat
+Route::get('/admin/absensi', function () {
+    return Inertia::render('Auth/Admin/Attendance/History');
+})->name('admin.attendance.history');
+
+    // admin-laporan
+Route::get('/admin/laporan', function () {
+    return Inertia::render('Auth/Admin/Report/Index');
+})->name('admin.reports.index');
+
 // Pegawai
 Route::middleware(['auth', 'role:pegawai'])->group(function () {
     Route::get('/pegawai/dashboard', [PegawaiDashboardController::class, 'index'])
