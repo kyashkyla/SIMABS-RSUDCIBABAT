@@ -91,8 +91,32 @@ Route::get('/admin/laporan', function () {
 
 // Pegawai
 Route::middleware(['auth', 'role:pegawai'])->group(function () {
-    Route::get('/pegawai/dashboard', [PegawaiDashboardController::class, 'index'])
-        ->name('pegawai.dashboard');
+
+    Route::get('/pegawai/dashboard', function () {
+        return Inertia::render('Auth/pegawai/Dashboard');
+    })->name('pegawai.dashboard');
+
+    // Profile Saya pegawai
+Route::get('/pegawai/profile', function () {
+    return Inertia::render('Auth/pegawai/Profile');
+})->name('pegawai.profile');
+
+    Route::get('/pegawai/absensi', function () {
+        return Inertia::render('Auth/pegawai/Absensi');
+    })->name('pegawai.absensi');
+
+    Route::get('/pegawai/riwayat-absensi', function () {
+        return Inertia::render('Auth/pegawai/RiwayatAbsensi');
+    })->name('pegawai.riwayat');
+
+    Route::get('/pegawai/laporan', function () {
+        return Inertia::render('Auth/pegawai/Laporan');
+    })->name('pegawai.laporan');
+
+    Route::get('/pegawai/pengaturan', function () {
+        return Inertia::render('Auth/pegawai/Pengaturan');
+    })->name('pegawai.pengaturan');
+
 });
 
 require __DIR__.'/auth.php';
