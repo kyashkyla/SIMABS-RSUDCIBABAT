@@ -1,129 +1,221 @@
 <script setup>
+import { ref, onMounted, onUnmounted } from 'vue'
+
 import {
     BellIcon,
-    MagnifyingGlassIcon,
     ChevronDownIcon,
+    UserCircleIcon,
 } from '@heroicons/vue/24/outline'
 
-const today = new Date().toLocaleDateString('id-ID', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
+const showProfileMenu = ref(false)
+
+const today = ref('')
+
+const updateDate = () => {
+    today.value = new Date().toLocaleDateString('id-ID', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+    })
+}
+
+const toggleProfile = () => {
+    showProfileMenu.value = !showProfileMenu.value
+}
+
+const closeProfile = (event) => {
+    if (!event.target.closest('.profile-menu')) {
+        showProfileMenu.value = false
+    }
+}
+
+onMounted(() => {
+    updateDate()
+    document.addEventListener('click', closeProfile)
+})
+
+onUnmounted(() => {
+    document.removeEventListener('click', closeProfile)
 })
 </script>
 
 <template>
 
-<header class="bg-white shadow-sm border-b border-slate-200">
+    <header class="bg-white border-b border-slate-200 shadow-sm">
 
-    <div class="flex items-center justify-between px-8 py-5">
+        <div
+            class="h-24 px-8 flex items-center justify-between">
 
-        <!-- Judul -->
+            <!-- ================= LEFT ================= -->
 
-        <div>
+            <div>
 
-            <h1 class="text-3xl font-bold text-slate-800">
-
-                Dashboard Administrator
-
-            </h1>
-
-            <p class="text-slate-500 mt-1">
-
-                Selamat datang di Sistem Informasi Manajemen Absensi RSUD Cibabat
-
-            </p>
-
-        </div>
-
-        <!-- Right -->
-
-        <div class="flex items-center gap-5">
-
-            <!-- Search -->
-
-            <div class="relative hidden lg:block">
-
-                <MagnifyingGlassIcon
-                    class="w-5 h-5 absolute left-4 top-3.5 text-gray-400"/>
-
-                <input
-                    type="text"
-                    placeholder="Cari..."
-                    class="w-72 pl-12 pr-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:outline-none"/>
-
-            </div>
-
-            <!-- Tanggal -->
-
-            <div class="hidden md:block text-right">
-
-                <p class="text-xs text-gray-400">
-
-                    Hari Ini
-
-                </p>
-
-                <p class="font-semibold text-slate-700">
-
+                <p class="text-sm text-slate-400 mb-1">
                     {{ today }}
-
                 </p>
+
+                <h1 class="text-xl font-semibold text-slate-700">
+                    Dashboard Administrator
+                </h1>
 
             </div>
 
-            <!-- Notifikasi -->
 
-            <button
-                class="relative w-12 h-12 rounded-xl bg-slate-100 hover:bg-slate-200 transition">
+            <!-- ================= RIGHT ================= -->
 
-                <BellIcon
-                    class="w-6 h-6 mx-auto text-slate-700"/>
+            <div class="flex items-center gap-5">
 
-                <span
-                    class="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full">
-                </span>
+                <!-- Notifikasi -->
 
-            </button>
+                <button
+                    type="button"
+                    class="relative w-11 h-11 rounded-full
+                           hover:bg-slate-100
+                           flex items-center justify-center
+                           transition">
 
-            <!-- Profile -->
+                    <BellIcon
+                        class="w-6 h-6 text-slate-600"
+                    />
 
-            <button
-                class="flex items-center gap-3 bg-slate-100 rounded-xl px-4 py-2 hover:bg-slate-200 transition">
+                    <!-- Notification Dot -->
 
-                <div
-                    class="w-11 h-11 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-lg">
+                    <span
+                        class="absolute top-2 right-2
+                               w-2.5 h-2.5
+                               bg-red-500
+                               rounded-full
+                               border-2 border-white">
+                    </span>
 
-                    A
+                </button>
+
+
+                <!-- Garis Pemisah -->
+
+                <div class="h-10 w-px bg-slate-200">
+                </div>
+
+
+                <!-- ================= PROFILE ================= -->
+
+                <div class="relative profile-menu">
+
+                    <button
+                        type="button"
+                        @click.stop="toggleProfile"
+                        class="flex items-center gap-3
+                               px-2 py-1.5
+                               rounded-xl
+                               hover:bg-slate-50
+                               transition">
+
+                        <!-- Avatar -->
+
+                        <div
+                            class="w-11 h-11
+                                   rounded-full
+                                   bg-emerald-50
+                                   border border-emerald-100
+                                   flex items-center justify-center">
+
+                            <UserCircleIcon
+                                class="w-7 h-7 text-emerald-500"
+                            />
+
+                        </div>
+
+
+                        <!-- Nama -->
+
+                        <div class="text-left hidden sm:block">
+
+                            <p class="text-sm font-semibold text-slate-700">
+                                Administrator
+                            </p>
+
+                            <p class="text-xs text-slate-400">
+                                Super Admin
+                            </p>
+
+                        </div>
+
+
+                        <!-- Arrow -->
+
+                        <ChevronDownIcon
+                            class="w-4 h-4 text-slate-400
+                                   transition-transform"
+                            :class="{
+                                'rotate-180': showProfileMenu
+                            }"
+                        />
+
+                    </button>
+
+
+                    <!-- ================= DROPDOWN ================= -->
+
+                    <div
+                        v-if="showProfileMenu"
+                        class="absolute right-0 top-14
+                               w-56
+                               bg-white
+                               rounded-xl
+                               shadow-xl
+                               border border-slate-100
+                               py-2
+                               z-50">
+
+                        <div class="px-4 py-3 border-b">
+
+                            <p class="text-sm font-semibold text-slate-700">
+                                Administrator
+                            </p>
+
+                            <p class="text-xs text-slate-400">
+                                Admin Sistem
+                            </p>
+
+                        </div>
+
+
+                        <a
+                            href="/admin/pengaturan"
+                            class="block px-4 py-3
+                                   text-sm text-slate-600
+                                   hover:bg-slate-50
+                                   transition">
+
+                            Pengaturan Akun
+
+                        </a>
+
+
+                        <div class="border-t my-1">
+                        </div>
+
+
+                        <a
+                            href="/admin/logout"
+                            class="block px-4 py-3
+                                   text-sm text-red-500
+                                   hover:bg-red-50
+                                   transition">
+
+                            Keluar
+
+                        </a>
+
+                    </div>
 
                 </div>
 
-                <div class="text-left hidden md:block">
-
-                    <h3 class="font-semibold text-slate-800">
-
-                        Administrator
-
-                    </h3>
-
-                    <p class="text-sm text-gray-500">
-
-                        Super Admin
-
-                    </p>
-
-                </div>
-
-                <ChevronDownIcon
-                    class="w-5 h-5 text-gray-500"/>
-
-            </button>
+            </div>
 
         </div>
 
-    </div>
-
-</header>
+    </header>
 
 </template>
