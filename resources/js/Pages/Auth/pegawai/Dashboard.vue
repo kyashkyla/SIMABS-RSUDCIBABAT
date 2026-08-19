@@ -1,6 +1,7 @@
 <script setup>
 import PegawaiLayout from './PegawaiLayout.vue'
 import { Link } from '@inertiajs/vue3'
+import { computed } from 'vue'
 
 import {
     CheckCircleIcon,
@@ -9,6 +10,23 @@ import {
     MapPinIcon,
     ChevronRightIcon,
 } from '@heroicons/vue/24/outline'
+
+const props = defineProps({
+    user: Object,
+    employee: Object,
+})
+
+// Inisial buat avatar placeholder, contoh "Ahmad Fauzi" -> "AF"
+const initials = computed(() => {
+    const name = props.employee?.name || props.user?.name || ''
+    return name
+        .split(' ')
+        .filter(Boolean)
+        .slice(0, 2)
+        .map(word => word[0])
+        .join('')
+        .toUpperCase()
+})
 </script>
 
 <template>
@@ -20,7 +38,7 @@ import {
             <!-- ============================= -->
             <div class="dashboard-header">
                 <div>
-                    <h1>Selamat Pagi, Dr. Ahmad Fauzi 👋</h1>
+                    <h1>Selamat Datang, {{ employee?.name || user?.name }} 👋</h1>
                     <p>
                         Semangat bekerja untuk kesehatan masyarakat Cimahi
                     </p>
@@ -437,28 +455,28 @@ import {
 
                         <div class="profile-photo">
                             <div class="profile-placeholder">
-                                AF
+                                {{ initials }}
                             </div>
                         </div>
 
                         <div class="profile-info">
 
                             <strong>
-                                Dr. Ahmad Fauzi, Sp.JP
+                                {{ employee?.name || user?.name }}
                             </strong>
 
                             <span>
-                                NIP: 198501012010011001
+                                NIP: {{ employee?.nip || '-' }}
                             </span>
 
                             <div class="profile-tags">
 
-                                <span>
-                                    Kardiologi
+                                <span v-if="employee?.department">
+                                    {{ employee.department }}
                                 </span>
 
-                                <span>
-                                    Dokter Spesialis
+                                <span v-if="employee?.position">
+                                    {{ employee.position }}
                                 </span>
 
                             </div>

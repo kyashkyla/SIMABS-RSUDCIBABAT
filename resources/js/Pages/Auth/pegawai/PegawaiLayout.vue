@@ -1,6 +1,6 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue';
-import { Link } from '@inertiajs/vue3';
+import { ref, onMounted, watch, computed } from 'vue';
+import { Link, usePage } from '@inertiajs/vue3';
 
 import {
     Menu,
@@ -17,6 +17,14 @@ import {
 
 
 // =====================================================
+// USER YANG SEDANG LOGIN
+// =====================================================
+
+const page = usePage();
+const authUser = computed(() => page.props.auth?.user);
+
+
+// =====================================================
 // SIDEBAR STATE
 // =====================================================
 
@@ -27,6 +35,7 @@ const profileOpen = ref(false);
 // Ambil kondisi sidebar terakhir dari browser
 onMounted(() => {
     const savedState = localStorage.getItem('pegawai_sidebar_collapsed');
+
 
     if (savedState !== null) {
         sidebarCollapsed.value = savedState === 'true';
@@ -340,7 +349,7 @@ const isActive = (routeName) => {
                                 <p
                                     class="text-sm font-semibold text-slate-800"
                                 >
-                                    Dr. Ahmad Fauzi
+                                    {{ authUser?.name }}
                                 </p>
 
                             </div>

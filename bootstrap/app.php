@@ -4,6 +4,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use App\Http\Middleware\CheckRole;
+use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -22,6 +23,20 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => CheckRole::class,
         ]);
+
+        // Kalau user sudah login tapi buka halaman guest (mis. /login),
+        // arahkan sesuai role, bukan mental ke "/" (halaman pilihan).
+        RedirectIfAuthenticated::redirectUsing(function ($request) {
+            $user = auth()->user();
+
+            if (! $user) {
+                return '/';
+            }
+
+            return $user->role === 'admin'
+                ? route('admin.dashboard')
+                : route('pegawai.dashboard');
+        });
 
     })
     ->withExceptions(function (Exceptions $exceptions): void {

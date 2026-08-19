@@ -21,6 +21,7 @@ class Employee extends Model
         'start_date',
         'shift',
         'face_id_registered',
+        'photo',
     ];
 
     protected $casts = [

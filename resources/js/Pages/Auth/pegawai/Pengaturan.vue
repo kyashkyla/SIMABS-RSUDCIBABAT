@@ -1,5 +1,6 @@
 <script setup>
-import { ref, computed, onBeforeUnmount } from 'vue'
+import { ref, onBeforeUnmount } from 'vue'
+import { useForm } from '@inertiajs/vue3'
 
 import PegawaiLayout from './PegawaiLayout.vue'
 
@@ -17,22 +18,35 @@ import {
 
 
 /* =========================================================
+   PROPS (dari Pegawai\ProfileController@edit)
+========================================================= */
+
+const props = defineProps({
+
+    pegawai: {
+        type: Object,
+        default: () => ({}),
+    },
+
+})
+
+
+/* =========================================================
    PROFILE
 ========================================================= */
 
 const isEditingProfile = ref(false)
 
-const nama = ref('Dr. Ahmad Fauzi')
-const email = ref('ahmad@rscibabat.com')
+// Foto yang sedang tersimpan di server (dari database)
+const defaultPhoto = ref(props.pegawai.foto || '')
 
-const username = ref('pegawai')
-const nip = ref('198501012010011001')
-
-const profileFile = ref(null)
-
-const defaultPhoto = ref('')
-
+// Foto yang sedang ditampilkan (bisa berubah kalau user pilih foto baru)
 const photoPreview = ref(defaultPhoto.value)
+
+const profileForm = useForm({
+    email: props.pegawai.email || '',
+    photo: null,
+})
 
 
 /* =========================================================
@@ -41,13 +55,16 @@ const photoPreview = ref(defaultPhoto.value)
 
 const isChangingPassword = ref(false)
 
-const passwordSaatIni = ref('')
-const passwordBaru = ref('')
-const konfirmasiPassword = ref('')
+const passwordForm = useForm({
+    current_password: '',
+    password: '',
+    password_confirmation: '',
+})
 
 
 /* =========================================================
-   NOTIFICATION
+   NOTIFICATION (belum ada tabel/kolom di database,
+   jadi masih preferensi lokal di layar saja)
 ========================================================= */
 
 const pengingatAbsensi = ref(true)
@@ -77,7 +94,7 @@ const pilihFotoProfil = (event) => {
         return
     }
 
-    profileFile.value = file
+    profileForm.photo = file
 
     photoPreview.value = URL.createObjectURL(file)
 }
@@ -89,7 +106,7 @@ const hapusFotoBaru = () => {
         URL.revokeObjectURL(photoPreview.value)
     }
 
-    profileFile.value = null
+    profileForm.photo = null
 
     photoPreview.value = defaultPhoto.value
 }
@@ -100,6 +117,9 @@ const hapusFotoBaru = () => {
 ========================================================= */
 
 const bukaEditProfil = () => {
+
+    profileForm.email = props.pegawai.email || ''
+
     isEditingProfile.value = true
 }
 
@@ -108,40 +128,29 @@ const batalEditProfil = () => {
 
     isEditingProfile.value = false
 
+    profileForm.clearErrors()
+    profileForm.email = props.pegawai.email || ''
+
     hapusFotoBaru()
 }
 
 
 const simpanProfil = () => {
 
-    if (!nama.value.trim()) {
-        alert('Nama lengkap wajib diisi.')
-        return
-    }
+    profileForm.post(route('pegawai.pengaturan.update'), {
+        forceFormData: true,
+        preserveScroll: true,
 
-    if (!email.value.trim()) {
-        alert('Email wajib diisi.')
-        return
-    }
+        onSuccess: () => {
 
-    /*
-        NANTI KALAU SUDAH ADA BACKEND:
+            isEditingProfile.value = false
 
-        const formData = new FormData()
+            // Foto baru (kalau ada) sudah tersimpan, jadikan itu foto default
+            defaultPhoto.value = photoPreview.value
 
-        formData.append('nama', nama.value)
-        formData.append('email', email.value)
-
-        if (profileFile.value) {
-            formData.append('foto', profileFile.value)
-        }
-
-        axios.post('/api/profile/update', formData)
-    */
-
-    isEditingProfile.value = false
-
-    alert('Profil berhasil diperbarui.')
+            profileForm.photo = null
+        },
+    })
 }
 
 
@@ -153,9 +162,8 @@ const bukaUbahPassword = () => {
 
     isChangingPassword.value = true
 
-    passwordSaatIni.value = ''
-    passwordBaru.value = ''
-    konfirmasiPassword.value = ''
+    passwordForm.reset()
+    passwordForm.clearErrors()
 }
 
 
@@ -163,45 +171,26 @@ const batalUbahPassword = () => {
 
     isChangingPassword.value = false
 
-    passwordSaatIni.value = ''
-    passwordBaru.value = ''
-    konfirmasiPassword.value = ''
+    passwordForm.reset()
+    passwordForm.clearErrors()
 }
 
 
 const simpanPassword = () => {
 
-    if (
-        !passwordSaatIni.value ||
-        !passwordBaru.value ||
-        !konfirmasiPassword.value
-    ) {
-        alert('Semua password wajib diisi.')
-        return
-    }
+    passwordForm.put(route('password.update'), {
+        preserveScroll: true,
 
-    if (passwordBaru.value !== konfirmasiPassword.value) {
-        alert('Konfirmasi password tidak sesuai.')
-        return
-    }
+        onSuccess: () => {
+            batalUbahPassword()
+            alert('Password berhasil diubah.')
+        },
 
-    if (passwordBaru.value.length < 8) {
-        alert('Password baru minimal 8 karakter.')
-        return
-    }
-
-    /*
-        NANTI BACKEND:
-
-        axios.post('/api/password/change', {
-            current_password: passwordSaatIni.value,
-            new_password: passwordBaru.value,
-        })
-    */
-
-    alert('Password berhasil diubah.')
-
-    batalUbahPassword()
+        onError: () => {
+            // Demi keamanan, Laravel mengosongkan field password kalau gagal
+            passwordForm.reset('password', 'password_confirmation')
+        },
+    })
 }
 
 
@@ -293,8 +282,8 @@ onBeforeUnmount(() => {
                         <div class="profile-photo">
 
                             <img
-                                v-if="photoPreview"
-                                :src="photoPreview"
+                                v-if="pegawai.foto"
+                                :src="pegawai.foto"
                                 alt="Foto Profil"
                             />
 
@@ -318,7 +307,7 @@ onBeforeUnmount(() => {
                             </span>
 
                             <strong>
-                                {{ nama }}
+                                {{ pegawai.nama || '-' }}
                             </strong>
 
                         </div>
@@ -331,7 +320,7 @@ onBeforeUnmount(() => {
                             </span>
 
                             <strong>
-                                {{ username }}
+                                {{ pegawai.username || '-' }}
                             </strong>
 
                         </div>
@@ -344,7 +333,7 @@ onBeforeUnmount(() => {
                             </span>
 
                             <strong>
-                                {{ email }}
+                                {{ pegawai.email || '-' }}
                             </strong>
 
                         </div>
@@ -357,7 +346,7 @@ onBeforeUnmount(() => {
                             </span>
 
                             <strong>
-                                {{ nip }}
+                                {{ pegawai.nip || '-' }}
                             </strong>
 
                         </div>
@@ -421,9 +410,16 @@ onBeforeUnmount(() => {
                                 Maksimal 2 MB
                             </span>
 
+                            <span
+                                v-if="profileForm.errors.photo"
+                                class="field-error"
+                            >
+                                {{ profileForm.errors.photo }}
+                            </span>
+
 
                             <button
-                                v-if="profileFile"
+                                v-if="profileForm.photo"
                                 type="button"
                                 class="remove-photo"
                                 @click="hapusFotoBaru"
@@ -447,10 +443,14 @@ onBeforeUnmount(() => {
                             </label>
 
                             <input
-                                v-model="nama"
+                                :value="pegawai.nama"
                                 type="text"
-                                placeholder="Masukkan nama lengkap"
+                                disabled
                             />
+
+                            <small>
+                                Nama dikelola oleh administrator.
+                            </small>
 
                         </div>
 
@@ -462,7 +462,7 @@ onBeforeUnmount(() => {
                             </label>
 
                             <input
-                                v-model="username"
+                                :value="pegawai.username"
                                 type="text"
                                 disabled
                             />
@@ -481,10 +481,17 @@ onBeforeUnmount(() => {
                             </label>
 
                             <input
-                                v-model="email"
+                                v-model="profileForm.email"
                                 type="email"
                                 placeholder="Masukkan email"
                             />
+
+                            <small
+                                v-if="profileForm.errors.email"
+                                class="field-error"
+                            >
+                                {{ profileForm.errors.email }}
+                            </small>
 
                         </div>
 
@@ -496,7 +503,7 @@ onBeforeUnmount(() => {
                             </label>
 
                             <input
-                                v-model="nip"
+                                :value="pegawai.nip"
                                 type="text"
                                 disabled
                             />
@@ -530,12 +537,17 @@ onBeforeUnmount(() => {
                         <button
                             type="button"
                             class="save-button"
+                            :disabled="profileForm.processing"
                             @click="simpanProfil"
                         >
 
                             <CheckIcon />
 
-                            Simpan Perubahan
+                            {{
+                                profileForm.processing
+                                    ? 'Menyimpan...'
+                                    : 'Simpan Perubahan'
+                            }}
 
                         </button>
 
@@ -652,10 +664,17 @@ onBeforeUnmount(() => {
                             </label>
 
                             <input
-                                v-model="passwordSaatIni"
+                                v-model="passwordForm.current_password"
                                 type="password"
                                 placeholder="Masukkan password saat ini"
                             />
+
+                            <small
+                                v-if="passwordForm.errors.current_password"
+                                class="field-error"
+                            >
+                                {{ passwordForm.errors.current_password }}
+                            </small>
 
                         </div>
 
@@ -667,10 +686,17 @@ onBeforeUnmount(() => {
                             </label>
 
                             <input
-                                v-model="passwordBaru"
+                                v-model="passwordForm.password"
                                 type="password"
                                 placeholder="Minimal 8 karakter"
                             />
+
+                            <small
+                                v-if="passwordForm.errors.password"
+                                class="field-error"
+                            >
+                                {{ passwordForm.errors.password }}
+                            </small>
 
                         </div>
 
@@ -682,7 +708,7 @@ onBeforeUnmount(() => {
                             </label>
 
                             <input
-                                v-model="konfirmasiPassword"
+                                v-model="passwordForm.password_confirmation"
                                 type="password"
                                 placeholder="Ulangi password baru"
                             />
@@ -719,12 +745,17 @@ onBeforeUnmount(() => {
                             <button
                                 type="button"
                                 class="save-button"
+                                :disabled="passwordForm.processing"
                                 @click="simpanPassword"
                             >
 
                                 <CheckIcon />
 
-                                Simpan Password
+                                {{
+                                    passwordForm.processing
+                                        ? 'Menyimpan...'
+                                        : 'Simpan Password'
+                                }}
 
                             </button>
 
@@ -1279,6 +1310,10 @@ onBeforeUnmount(() => {
     font-size: 8px;
 }
 
+.field-error {
+    color: #d46a6a !important;
+}
+
 
 /* =========================================================
    ACTION BUTTON
@@ -1329,6 +1364,12 @@ onBeforeUnmount(() => {
 
 .save-button:hover {
     background: #1c9d89;
+}
+
+.save-button:disabled {
+    background: #8fd2c6;
+
+    cursor: not-allowed;
 }
 
 .cancel-button {

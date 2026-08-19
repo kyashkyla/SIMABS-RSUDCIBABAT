@@ -4,6 +4,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\EmployeeController;
 use App\Http\Controllers\Pegawai\DashboardController as PegawaiDashboardController;
+use App\Http\Controllers\Pegawai\ProfileController as PegawaiProfileController;
 use App\Http\Controllers\Admin\ReportController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -92,14 +93,12 @@ Route::get('/admin/laporan', function () {
 // Pegawai
 Route::middleware(['auth', 'role:pegawai'])->group(function () {
 
-    Route::get('/pegawai/dashboard', function () {
-        return Inertia::render('Auth/pegawai/Dashboard');
-    })->name('pegawai.dashboard');
+   Route::get('/pegawai/dashboard', [PegawaiDashboardController::class, 'index'])
+    ->name('pegawai.dashboard');
 
     // Profile Saya pegawai
-Route::get('/pegawai/profile', function () {
-    return Inertia::render('Auth/pegawai/Profile');
-})->name('pegawai.profile');
+    Route::get('/pegawai/profile', [PegawaiProfileController::class, 'show'])
+        ->name('pegawai.profile');
 
     Route::get('/pegawai/absensi', function () {
         return Inertia::render('Auth/pegawai/Absensi');
@@ -113,9 +112,11 @@ Route::get('/pegawai/profile', function () {
         return Inertia::render('Auth/pegawai/Laporan');
     })->name('pegawai.laporan');
 
-    Route::get('/pegawai/pengaturan', function () {
-        return Inertia::render('Auth/pegawai/Pengaturan');
-    })->name('pegawai.pengaturan');
+    Route::get('/pegawai/pengaturan', [PegawaiProfileController::class, 'edit'])
+        ->name('pegawai.pengaturan');
+
+    Route::post('/pegawai/pengaturan', [PegawaiProfileController::class, 'update'])
+        ->name('pegawai.pengaturan.update');
 
 });
 
