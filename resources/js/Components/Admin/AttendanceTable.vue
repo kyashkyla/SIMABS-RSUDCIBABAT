@@ -1,45 +1,12 @@
 <script setup>
 import { EyeIcon } from '@heroicons/vue/24/outline'
 
-const attendances = [
-
-    {
-        id:1,
-        nama:'Ahmad Fauzi',
-        departemen:'Radiologi',
-        jam:'07:03',
-        metode:'Face ID',
-        status:'Hadir'
+const props = defineProps({
+    attendances: {
+        type: Array,
+        default: () => [],
     },
-
-    {
-        id:2,
-        nama:'Maya Kusuma',
-        departemen:'IGD',
-        jam:'07:08',
-        metode:'OTP',
-        status:'Alternatif'
-    },
-
-    {
-        id:3,
-        nama:'Rizky Saputra',
-        departemen:'Farmasi',
-        jam:'-',
-        metode:'-',
-        status:'Tidak Hadir'
-    },
-
-    {
-        id:4,
-        nama:'Siti Aisyah',
-        departemen:'Rawat Inap',
-        jam:'06:58',
-        metode:'Face ID',
-        status:'Hadir'
-    }
-
-]
+})
 
 const badgeColor = (status)=>{
 
@@ -124,7 +91,7 @@ const badgeColor = (status)=>{
             <tbody>
 
                 <tr
-                    v-for="item in attendances"
+                    v-for="item in props.attendances"
                     :key="item.id"
                     class="border-b hover:bg-slate-50 transition">
 

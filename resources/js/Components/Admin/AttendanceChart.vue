@@ -10,6 +10,7 @@ import {
 } from 'chart.js'
 
 import { Bar } from 'vue-chartjs'
+import { computed } from 'vue'
 
 ChartJS.register(
     CategoryScale,
@@ -20,39 +21,39 @@ ChartJS.register(
     Legend
 )
 
-const chartData = {
-    labels: [
-        'Sen',
-        'Sel',
-        'Rab',
-        'Kam',
-        'Jum',
-        'Sab'
-    ],
+const props = defineProps({
+    labels: { type: Array, default: () => ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'] },
+    hadir: { type: Array, default: () => [] },
+    terlambat: { type: Array, default: () => [] },
+    tidakHadir: { type: Array, default: () => [] },
+})
+
+const chartData = computed(() => ({
+    labels: props.labels,
 
     datasets: [
         {
             label: 'Hadir',
             backgroundColor: '#10B981',
-            data: [120, 118, 125, 122, 119, 115],
+            data: props.hadir,
             borderRadius: 8,
         },
 
         {
             label: 'Terlambat',
             backgroundColor: '#F59E0B',
-            data: [8, 10, 6, 7, 9, 5],
+            data: props.terlambat,
             borderRadius: 8,
         },
 
         {
             label: 'Tidak Hadir',
             backgroundColor: '#EF4444',
-            data: [4, 3, 2, 5, 4, 6],
+            data: props.tidakHadir,
             borderRadius: 8,
         },
     ],
-}
+}))
 
 const chartOptions = {
 

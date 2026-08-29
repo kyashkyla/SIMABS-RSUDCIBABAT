@@ -229,4 +229,21 @@ class EmployeeController extends Controller
             ->route('admin.employees.show', $employee->id)
             ->with('success', 'Password pegawai berhasil diubah.');
     }
+
+    /**
+     * Reset perangkat login pegawai (Single Device Login - KF-02 / UC-09).
+     * Setelah direset, pegawai dapat login kembali dari perangkat baru.
+     */
+    public function resetDevice(Employee $employee)
+    {
+        if (!$employee->user) {
+            return back()->withErrors([
+                'device' => 'Pegawai belum memiliki akun login.',
+            ]);
+        }
+
+        $employee->user->update(['device_id' => null]);
+
+        return back()->with('success', 'Perangkat pegawai berhasil direset. Pegawai dapat login dari perangkat baru.');
+    }
 }
