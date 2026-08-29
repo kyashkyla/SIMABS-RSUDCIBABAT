@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue';
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
 
 import {
@@ -25,6 +25,24 @@ const authUser = computed(() => page.props.auth?.user);
 
 
 // =====================================================
+// TANGGAL HARI INI (otomatis, tidak manual lagi)
+// =====================================================
+
+const now = ref(new Date());
+let clockInterval = null;
+
+// Format: "Kamis, 27 Agustus 2026"
+const tanggalHariIni = computed(() => {
+    return now.value.toLocaleDateString('id-ID', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+    });
+});
+
+
+// =====================================================
 // SIDEBAR STATE
 // =====================================================
 
@@ -39,6 +57,18 @@ onMounted(() => {
 
     if (savedState !== null) {
         sidebarCollapsed.value = savedState === 'true';
+    }
+
+    // Perbarui tanggal setiap menit, jadi otomatis ganti begitu hari berganti
+    // tanpa perlu reload halaman
+    clockInterval = setInterval(() => {
+        now.value = new Date();
+    }, 60 * 1000);
+});
+
+onUnmounted(() => {
+    if (clockInterval) {
+        clearInterval(clockInterval);
     }
 });
 
@@ -293,10 +323,10 @@ const isActive = (routeName) => {
                 class="sticky top-0 z-30 flex h-[90px] items-center justify-between border-b border-slate-200 bg-white px-8"
             >
 
-                <!-- TANGGAL -->
+                <!-- TANGGAL (otomatis mengikuti tanggal hari ini) -->
                 <div>
                     <p class="text-sm text-slate-500">
-                        Kamis, 30 Juli 2026
+                        {{ tanggalHariIni }}
                     </p>
                 </div>
 
@@ -333,10 +363,18 @@ const isActive = (routeName) => {
                         >
 
                             <div
-                                class="flex h-11 w-11 items-center justify-center rounded-full bg-teal-50"
+                                class="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-teal-50"
                             >
 
+                                <img
+                                    v-if="authUser?.photo"
+                                    :src="authUser.photo"
+                                    alt="Foto profil"
+                                    class="h-full w-full object-cover"
+                                />
+
                                 <UserCircle
+                                    v-else
                                     class="h-8 w-8 text-[#13b8a6]"
                                     stroke-width="1.5"
                                 />

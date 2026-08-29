@@ -1,7 +1,7 @@
 <script setup>
 import PegawaiLayout from './PegawaiLayout.vue'
 import { Link } from '@inertiajs/vue3'
-import { computed } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 
 import {
     CheckCircleIcon,
@@ -14,7 +14,107 @@ import {
 const props = defineProps({
     user: Object,
     employee: Object,
+    todayAttendance: {
+        type: Object,
+        default: null,
+    },
+    monthlySummary: {
+        type: Object,
+        default: () => ({
+            hadir: 0,
+            terlambat: 0,
+            izin: 0,
+            tidak_hadir: 0,
+            hari_berjalan: 0,
+            tingkat_kehadiran: 0,
+        }),
+    },
+    recentActivities: {
+        type: Array,
+        default: () => [],
+    },
 })
+
+// =====================================================
+// STATUS ABSENSI HARI INI (dari database, bukan manual)
+// =====================================================
+
+const statusHariIniLabel = computed(() => {
+    if (!props.todayAttendance) return 'Belum Absen'
+    if (props.todayAttendance.status === 'terlambat') return 'Terlambat'
+    if (props.todayAttendance.status === 'alternatif') return 'Izin'
+    return 'Hadir'
+})
+
+const jamMasukLabel = computed(() => props.todayAttendance?.check_in_at ?? '—')
+
+const jamMasukKeterangan = computed(() =>
+    props.todayAttendance
+        ? 'Terhitung dari absensi masuk'
+        : 'Anda belum melakukan absensi hari ini'
+)
+
+const methodLabelMap = {
+    face: 'Face Recognition',
+    otp: 'OTP Code',
+    alternative: 'Absensi Alternatif',
+}
+
+const statusBadge = {
+    hadir: { text: 'Hadir', class: 'hadir-badge' },
+    terlambat: { text: 'Terlambat', class: 'terlambat-badge' },
+    alternatif: { text: 'Izin', class: 'izin-badge' },
+}
+
+// =====================================================
+// RINGKASAN BULAN (persentase progress bar, aman dari bagi 0)
+// =====================================================
+
+const summaryPercent = computed(() => {
+    const total = props.monthlySummary.hari_berjalan || 1
+    const s = props.monthlySummary
+
+    return {
+        hadir: Math.round((s.hadir / total) * 100),
+        terlambat: Math.round((s.terlambat / total) * 100),
+        izin: Math.round((s.izin / total) * 100),
+        tidak_hadir: Math.round((s.tidak_hadir / total) * 100),
+    }
+})
+
+// =====================================================
+// AKTIVITAS TERKINI (5 absensi terakhir dari database)
+// =====================================================
+
+const aktivitas = computed(() =>
+    props.recentActivities.map((item) => {
+        const tanggal = new Date(`${item.attendance_date}T00:00:00`)
+        const hariIni = new Date()
+        const kemarin = new Date()
+        kemarin.setDate(hariIni.getDate() - 1)
+
+        let labelWaktu
+        if (tanggal.toDateString() === hariIni.toDateString()) {
+            labelWaktu = 'Hari ini'
+        } else if (tanggal.toDateString() === kemarin.toDateString()) {
+            labelWaktu = 'Kemarin'
+        } else {
+            labelWaktu = tanggal.toLocaleDateString('id-ID', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+            })
+        }
+
+        return {
+            ...item,
+            labelWaktu,
+            methodLabel: methodLabelMap[item.method] ?? (item.method ?? '—'),
+            badge: statusBadge[item.status] ?? { text: item.status, class: 'hadir-badge' },
+            iconClass: item.status === 'terlambat' ? 'warning' : 'success',
+        }
+    })
+)
 
 // Inisial buat avatar placeholder, contoh "Ahmad Fauzi" -> "AF"
 const initials = computed(() => {
@@ -26,6 +126,52 @@ const initials = computed(() => {
         .map(word => word[0])
         .join('')
         .toUpperCase()
+})
+
+// =====================================================
+// JAM & TANGGAL BERJALAN (otomatis, tidak manual lagi)
+// =====================================================
+
+const now = ref(new Date())
+let clockInterval = null
+
+// Format: "13.32"
+const jamSekarang = computed(() => {
+    return now.value
+        .toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+        .replace(':', '.')
+})
+
+// Format: "Kamis, 27 Agustus 2026"
+const tanggalSekarang = computed(() => {
+    return now.value.toLocaleDateString('id-ID', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+    })
+})
+
+// Format: "Agustus 2026" (buat judul "Ringkasan Bulan")
+const bulanTahunSekarang = computed(() => {
+    return now.value.toLocaleDateString('id-ID', {
+        month: 'long',
+        year: 'numeric',
+    })
+})
+
+onMounted(() => {
+    // Update tiap detik supaya jam berjalan real-time, tanggal otomatis
+    // ikut berganti begitu lewat tengah malam
+    clockInterval = setInterval(() => {
+        now.value = new Date()
+    }, 1000)
+})
+
+onUnmounted(() => {
+    if (clockInterval) {
+        clearInterval(clockInterval)
+    }
 })
 </script>
 
@@ -45,8 +191,8 @@ const initials = computed(() => {
                 </div>
 
                 <div class="current-time">
-                    <strong>13.32</strong>
-                    <span>Kamis, 30 Juli 2026</span>
+                    <strong>{{ jamSekarang }}</strong>
+                    <span>{{ tanggalSekarang }}</span>
                 </div>
             </div>
 
@@ -92,10 +238,10 @@ const initials = computed(() => {
                     </div>
 
                     <div class="stat-main">
-                        Hadir
+                        {{ statusHariIniLabel }}
                     </div>
 
-                    <p>Terhitung dari absensi masuk</p>
+                    <p>{{ jamMasukKeterangan }}</p>
 
                 </div>
 
@@ -111,11 +257,11 @@ const initials = computed(() => {
                         </div>
                     </div>
 
-                    <div class="stat-value">
-                        07:52
+                    <div class="stat-value" :class="{ empty: !todayAttendance }">
+                        {{ jamMasukLabel }}
                     </div>
 
-                    <p>Lebih awal 8 menit</p>
+                    <p>{{ todayAttendance ? 'Absensi masuk tercatat' : 'Belum absen masuk' }}</p>
 
                 </div>
 
@@ -152,10 +298,10 @@ const initials = computed(() => {
                     </div>
 
                     <div class="stat-value">
-                        22/23
+                        {{ monthlySummary.hadir + monthlySummary.terlambat }}/{{ monthlySummary.hari_berjalan }}
                     </div>
 
-                    <p>95.6% tingkat kehadiran</p>
+                    <p>{{ monthlySummary.tingkat_kehadiran }}% tingkat kehadiran</p>
 
                 </div>
 
@@ -212,20 +358,20 @@ const initials = computed(() => {
                     <!-- RINGKASAN BULAN -->
                     <div class="card summary-card">
 
-                        <h3>Ringkasan Juli 2026</h3>
+                        <h3>Ringkasan {{ bulanTahunSekarang }}</h3>
 
                         <!-- Hadir -->
                         <div class="summary-item">
 
                             <div class="summary-label">
                                 <span>Hadir</span>
-                                <strong>20 hari</strong>
+                                <strong>{{ monthlySummary.hadir }} hari</strong>
                             </div>
 
                             <div class="progress">
                                 <div
                                     class="progress-fill hadir"
-                                    style="width: 94%"
+                                    :style="{ width: summaryPercent.hadir + '%' }"
                                 ></div>
                             </div>
 
@@ -237,13 +383,13 @@ const initials = computed(() => {
 
                             <div class="summary-label">
                                 <span>Terlambat</span>
-                                <strong>2 hari</strong>
+                                <strong>{{ monthlySummary.terlambat }} hari</strong>
                             </div>
 
                             <div class="progress">
                                 <div
                                     class="progress-fill terlambat"
-                                    style="width: 9%"
+                                    :style="{ width: summaryPercent.terlambat + '%' }"
                                 ></div>
                             </div>
 
@@ -255,13 +401,13 @@ const initials = computed(() => {
 
                             <div class="summary-label">
                                 <span>Izin</span>
-                                <strong>1 hari</strong>
+                                <strong>{{ monthlySummary.izin }} hari</strong>
                             </div>
 
                             <div class="progress">
                                 <div
                                     class="progress-fill izin"
-                                    style="width: 4%"
+                                    :style="{ width: summaryPercent.izin + '%' }"
                                 ></div>
                             </div>
 
@@ -273,13 +419,13 @@ const initials = computed(() => {
 
                             <div class="summary-label">
                                 <span>Tidak Hadir</span>
-                                <strong>0 hari</strong>
+                                <strong>{{ monthlySummary.tidak_hadir }} hari</strong>
                             </div>
 
                             <div class="progress">
                                 <div
                                     class="progress-fill tidak-hadir"
-                                    style="width: 0%"
+                                    :style="{ width: summaryPercent.tidak_hadir + '%' }"
                                 ></div>
                             </div>
 
@@ -312,10 +458,14 @@ const initials = computed(() => {
                         </div>
 
 
-                        <!-- Aktivitas 1 -->
-                        <div class="activity-item">
+                        <!-- Aktivitas absensi terakhir (dari database) -->
+                        <div
+                            v-for="item in aktivitas"
+                            :key="item.attendance_date"
+                            class="activity-item"
+                        >
 
-                            <div class="activity-icon success">
+                            <div class="activity-icon" :class="item.iconClass">
                                 <ClockIcon />
                             </div>
 
@@ -326,7 +476,7 @@ const initials = computed(() => {
                                 </strong>
 
                                 <span>
-                                    Hari ini · Face Recognition
+                                    {{ item.labelWaktu }} · {{ item.methodLabel }}
                                 </span>
 
                             </div>
@@ -334,118 +484,20 @@ const initials = computed(() => {
                             <div class="activity-time">
 
                                 <strong>
-                                    07:52
+                                    {{ item.check_in_at ?? '—' }}
                                 </strong>
 
-                                <span class="badge hadir-badge">
-                                    Hadir
+                                <span class="badge" :class="item.badge.class">
+                                    {{ item.badge.text }}
                                 </span>
 
                             </div>
 
                         </div>
 
-
-                        <!-- Aktivitas 2 -->
-                        <div class="activity-item">
-
-                            <div class="activity-icon success">
-                                <ClockIcon />
-                            </div>
-
-                            <div class="activity-info">
-
-                                <strong>
-                                    Absensi Keluar
-                                </strong>
-
-                                <span>
-                                    Kemarin · Face Recognition
-                                </span>
-
-                            </div>
-
-                            <div class="activity-time">
-
-                                <strong>
-                                    16:05
-                                </strong>
-
-                                <span class="badge hadir-badge">
-                                    Hadir
-                                </span>
-
-                            </div>
-
-                        </div>
-
-
-                        <!-- Aktivitas 3 -->
-                        <div class="activity-item">
-
-                            <div class="activity-icon warning">
-                                <ClockIcon />
-                            </div>
-
-                            <div class="activity-info">
-
-                                <strong>
-                                    Absensi Masuk
-                                </strong>
-
-                                <span>
-                                    28 Jul 2026 · OTP Code
-                                </span>
-
-                            </div>
-
-                            <div class="activity-time">
-
-                                <strong>
-                                    08:15
-                                </strong>
-
-                                <span class="badge terlambat-badge">
-                                    Terlambat
-                                </span>
-
-                            </div>
-
-                        </div>
-
-
-                        <!-- Aktivitas 4 -->
-                        <div class="activity-item">
-
-                            <div class="activity-icon success">
-                                <ClockIcon />
-                            </div>
-
-                            <div class="activity-info">
-
-                                <strong>
-                                    Absensi Keluar
-                                </strong>
-
-                                <span>
-                                    28 Jul 2026 · OTP Code
-                                </span>
-
-                            </div>
-
-                            <div class="activity-time">
-
-                                <strong>
-                                    16:10
-                                </strong>
-
-                                <span class="badge hadir-badge">
-                                    Hadir
-                                </span>
-
-                            </div>
-
-                        </div>
+                        <p v-if="aktivitas.length === 0" class="empty-activity">
+                            Belum ada aktivitas absensi.
+                        </p>
 
                     </div>
 
@@ -1126,6 +1178,22 @@ const initials = computed(() => {
     background: #fff0bf;
 
     color: #d99a13;
+}
+
+.izin-badge {
+    background: #dbeeff;
+
+    color: #1c7ed6;
+}
+
+.empty-activity {
+    padding: 24px 0;
+
+    text-align: center;
+
+    color: #a3adb0;
+
+    font-size: 12px;
 }
 
 

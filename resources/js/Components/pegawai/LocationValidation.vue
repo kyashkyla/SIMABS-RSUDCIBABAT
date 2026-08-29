@@ -1,11 +1,14 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 
 import {
     MapPinIcon,
     ArrowPathIcon,
     ShieldCheckIcon,
+    ExclamationTriangleIcon,
 } from '@heroicons/vue/24/outline'
+
+import { loadScript, loadStyle } from '@/lib/loadExternalAsset'
 
 const props = defineProps({
     approvalStatus: {
@@ -16,36 +19,209 @@ const props = defineProps({
 
 const emit = defineEmits(['location-success'])
 
+/*
+|--------------------------------------------------------------------------
+| Status
+|--------------------------------------------------------------------------
+|
+| checking = sedang minta izin/ambil koordinat GPS device
+| valid    = di dalam radius kantor
+| invalid  = di luar radius kantor
+| error    = GPS gagal diakses (izin ditolak, browser tidak support, dll)
+|
+*/
+
 const lokasiStatus = ref('checking')
+const errorMessage = ref('')
+const distanceMeters = ref(null)
+const radiusMeters = ref(null)
+const officeName = ref('')
+const devicePosition = ref(null) // { lat, lng }
+
+let mapInstance = null
+let officeMarker = null
+let officeCircle = null
+let deviceMarker = null
+const mapEl = ref(null)
 
 /*
 |--------------------------------------------------------------------------
-| Simulasi Deteksi Lokasi
+| Muat Leaflet (peta) dari CDN
 |--------------------------------------------------------------------------
 */
 
-const cekLokasi = () => {
+const LEAFLET_CSS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
+const LEAFLET_JS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
 
-    lokasiStatus.value = 'checking'
-
-    setTimeout(() => {
-
-        lokasiStatus.value = 'valid'
-
-    }, 1500)
+const ensureLeaflet = async () => {
+    loadStyle(LEAFLET_CSS)
+    await loadScript(LEAFLET_JS)
+    return window.L
 }
 
+/*
+|--------------------------------------------------------------------------
+| Ambil koordinat GPS device (asli, dari browser)
+|--------------------------------------------------------------------------
+*/
+
+const getDevicePosition = () => {
+    return new Promise((resolve, reject) => {
+        if (!('geolocation' in navigator)) {
+            reject(new Error('Perangkat/browser ini tidak mendukung GPS.'))
+            return
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                resolve({
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude,
+                })
+            },
+            (err) => {
+                if (err.code === err.PERMISSION_DENIED) {
+                    reject(new Error(
+                        'Izin lokasi ditolak. Aktifkan izin lokasi untuk browser ini lalu coba lagi.'
+                    ))
+                } else if (err.code === err.POSITION_UNAVAILABLE) {
+                    reject(new Error('Posisi GPS tidak dapat ditentukan. Coba pindah ke area terbuka.'))
+                } else if (err.code === err.TIMEOUT) {
+                    reject(new Error('Waktu mendeteksi lokasi habis. Coba lagi.'))
+                } else {
+                    reject(new Error('Gagal mendeteksi lokasi.'))
+                }
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 15000,
+                maximumAge: 0,
+            }
+        )
+    })
+}
 
 /*
 |--------------------------------------------------------------------------
-| Saat halaman dibuka
+| Gambar / update peta
 |--------------------------------------------------------------------------
 */
+
+const renderMap = async (office, device) => {
+    const L = await ensureLeaflet()
+
+    await nextTick()
+
+    if (!mapEl.value) return
+
+    if (!mapInstance) {
+        mapInstance = L.map(mapEl.value, {
+            zoomControl: true,
+            attributionControl: true,
+        })
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap contributors',
+        }).addTo(mapInstance)
+    }
+
+    const officeLatLng = [office.latitude, office.longitude]
+
+    if (!officeCircle) {
+        officeCircle = L.circle(officeLatLng, {
+            radius: office.radius_meters,
+            color: '#20ad98',
+            fillColor: '#20ad98',
+            fillOpacity: 0.15,
+            weight: 2,
+        }).addTo(mapInstance)
+    } else {
+        officeCircle.setLatLng(officeLatLng)
+        officeCircle.setRadius(office.radius_meters)
+    }
+
+    if (!officeMarker) {
+        officeMarker = L.marker(officeLatLng)
+            .addTo(mapInstance)
+            .bindPopup(office.name)
+    } else {
+        officeMarker.setLatLng(officeLatLng)
+    }
+
+    const deviceIcon = L.divIcon({
+        className: '',
+        html: '<div class="leaflet-device-dot"></div>',
+        iconSize: [16, 16],
+        iconAnchor: [8, 8],
+    })
+
+    const deviceLatLng = [device.lat, device.lng]
+
+    if (!deviceMarker) {
+        deviceMarker = L.marker(deviceLatLng, { icon: deviceIcon })
+            .addTo(mapInstance)
+            .bindPopup('Lokasi Anda')
+    } else {
+        deviceMarker.setLatLng(deviceLatLng)
+    }
+
+    const bounds = L.latLngBounds([officeLatLng, deviceLatLng]).pad(0.4)
+    mapInstance.fitBounds(bounds, { maxZoom: 18 })
+
+    // Leaflet butuh "diberitahu" ukurannya kalau container-nya baru
+    // muncul/berubah ukuran (mis. saat pertama kali di-render).
+    setTimeout(() => mapInstance && mapInstance.invalidateSize(), 200)
+}
+
+/*
+|--------------------------------------------------------------------------
+| Proses utama: ambil GPS -> kirim ke server -> validasi radius
+|--------------------------------------------------------------------------
+*/
+
+const cekLokasi = async () => {
+    lokasiStatus.value = 'checking'
+    errorMessage.value = ''
+
+    try {
+        const device = await getDevicePosition()
+        devicePosition.value = device
+
+        const response = await window.axios.post(route('pegawai.absensi.validasi-lokasi'), {
+            latitude: device.lat,
+            longitude: device.lng,
+        })
+
+        const result = response.data
+
+        distanceMeters.value = result.distance_meters
+        radiusMeters.value = result.radius_meters
+        officeName.value = result.office.name
+
+        lokasiStatus.value = result.valid ? 'valid' : 'invalid'
+
+        await renderMap(result.office, device)
+    } catch (err) {
+        if (err?.response?.status === 404) {
+            errorMessage.value = 'Lokasi kantor belum diatur oleh admin. Hubungi admin untuk mengatur titik lokasi & radius absensi.'
+        } else {
+            errorMessage.value = err.message || 'Terjadi kesalahan saat memvalidasi lokasi.'
+        }
+        lokasiStatus.value = 'error'
+    }
+}
 
 onMounted(() => {
     cekLokasi()
 })
 
+onBeforeUnmount(() => {
+    if (mapInstance) {
+        mapInstance.remove()
+        mapInstance = null
+    }
+})
 
 /*
 |--------------------------------------------------------------------------
@@ -54,14 +230,15 @@ onMounted(() => {
 */
 
 const lanjut = () => {
-
-    if (lokasiStatus.value !== 'valid') {
+    if (lokasiStatus.value !== 'valid' || !devicePosition.value) {
         return
     }
 
-    emit('location-success')
+    emit('location-success', {
+        latitude: devicePosition.value.lat,
+        longitude: devicePosition.value.lng,
+    })
 }
-
 </script>
 
 
@@ -82,19 +259,6 @@ const lanjut = () => {
                 <p>
                     Lakukan absensi sesuai metode yang tersedia.
                 </p>
-
-            </div>
-
-
-            <div class="date-box">
-
-                <strong>
-                    07:52
-                </strong>
-
-                <span>
-                    Selasa, 11 Agustus 2026
-                </span>
 
             </div>
 
@@ -210,7 +374,7 @@ const lanjut = () => {
                     </h2>
 
                     <p>
-                        Pastikan Anda berada di wilayah RSUD Cibabat.
+                        Pastikan Anda berada di wilayah {{ officeName || 'kantor' }}.
                     </p>
 
                 </div>
@@ -218,59 +382,15 @@ const lanjut = () => {
             </div>
 
 
-            <!-- MAP -->
+            <!-- MAP (Leaflet + OpenStreetMap) -->
 
             <div class="map-container">
 
-                <div class="map-grid"></div>
+                <div ref="mapEl" class="leaflet-mount"></div>
 
-
-                <!-- AREA RUMAH SAKIT -->
-
-                <div class="hospital-area">
-
-                    <div class="hospital-label">
-                        RSUD Cibabat
-                    </div>
-
-                </div>
-
-
-                <!-- DEVICE -->
-
-                <div class="device-location">
-
-                    <div class="pulse"></div>
-
-                    <div class="device-dot"></div>
-
-                </div>
-
-
-                <!-- MAP INFO -->
-
-                <div class="map-info">
-
-                    <MapPinIcon />
-
-                    <div>
-
-                        <strong>
-                            Lokasi Perangkat
-                        </strong>
-
-                        <span>
-
-                            {{
-                                lokasiStatus === 'checking'
-                                    ? 'Sedang mendeteksi posisi...'
-                                    : 'Lokasi berada dalam wilayah rumah sakit'
-                            }}
-
-                        </span>
-
-                    </div>
-
+                <div v-if="lokasiStatus === 'checking'" class="map-overlay">
+                    <ArrowPathIcon class="spin" />
+                    <span>Memuat peta...</span>
                 </div>
 
             </div>
@@ -292,7 +412,7 @@ const lanjut = () => {
                     </strong>
 
                     <span>
-                        Mohon tunggu sebentar.
+                        Mohon izinkan akses lokasi pada browser Anda.
                     </span>
 
                 </div>
@@ -316,7 +436,58 @@ const lanjut = () => {
                     </strong>
 
                     <span>
-                        Perangkat berada di dalam wilayah RSUD Cibabat.
+                        Anda berada {{ distanceMeters }} m dari titik kantor
+                        (radius diizinkan {{ radiusMeters }} m).
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <!-- INVALID (di luar radius) -->
+
+            <div
+                v-if="lokasiStatus === 'invalid'"
+                class="location-status invalid"
+            >
+
+                <ExclamationTriangleIcon />
+
+                <div>
+
+                    <strong>
+                        Anda berada di luar wilayah kantor
+                    </strong>
+
+                    <span>
+                        Jarak Anda {{ distanceMeters }} m dari kantor, sedangkan
+                        radius yang diizinkan hanya {{ radiusMeters }} m.
+                        Mendekatlah ke lokasi kantor lalu cek ulang.
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <!-- ERROR -->
+
+            <div
+                v-if="lokasiStatus === 'error'"
+                class="location-status invalid"
+            >
+
+                <ExclamationTriangleIcon />
+
+                <div>
+
+                    <strong>
+                        Tidak dapat memvalidasi lokasi
+                    </strong>
+
+                    <span>
+                        {{ errorMessage }}
                     </span>
 
                 </div>
@@ -346,7 +517,7 @@ const lanjut = () => {
             <!-- CEK ULANG -->
 
             <button
-                v-if="lokasiStatus === 'valid'"
+                v-if="lokasiStatus !== 'checking'"
                 type="button"
                 class="retry-button"
                 @click="cekLokasi"
@@ -389,21 +560,6 @@ const lanjut = () => {
     margin-top: 5px;
     color: #7b898c;
     font-size: 12px;
-}
-
-.date-box {
-    text-align: right;
-}
-
-.date-box strong {
-    display: block;
-    color: #21aa96;
-    font-size: 23px;
-}
-
-.date-box span {
-    color: #7b898c;
-    font-size: 10px;
 }
 
 .stepper {
@@ -522,128 +678,24 @@ const lanjut = () => {
     background: #edf4f2;
 }
 
-.map-grid {
+.leaflet-mount {
+    width: 100%;
+    height: 100%;
+}
+
+.map-overlay {
     position: absolute;
     inset: 0;
 
-    opacity: .4;
-
-    background-image:
-        linear-gradient(#d5e5e2 1px, transparent 1px),
-        linear-gradient(90deg, #d5e5e2 1px, transparent 1px);
-
-    background-size: 55px 55px;
-}
-
-.hospital-area {
-    position: absolute;
-
-    left: 50%;
-    top: 50%;
-
-    width: 250px;
-    height: 190px;
-
-    transform: translate(-50%, -50%);
-
-    border-radius: 50%;
-
-    background: rgba(55, 204, 117, .16);
-
-    border: 2px solid rgba(38, 181, 99, .5);
-}
-
-.hospital-label {
-    position: absolute;
-
-    left: 50%;
-    top: 50%;
-
-    transform: translate(-50%, -50%);
-
-    padding: 7px 11px;
-
-    background: white;
-
-    border-radius: 8px;
-
-    color: #34845c;
-
-    font-size: 10px;
-    font-weight: 700;
-
-    box-shadow: 0 3px 10px rgba(0,0,0,.08);
-}
-
-.device-location {
-    position: absolute;
-
-    left: 54%;
-    top: 46%;
-}
-
-.pulse {
-    position: absolute;
-
-    width: 45px;
-    height: 45px;
-
-    left: -22px;
-    top: -22px;
-
-    border-radius: 50%;
-
-    background: rgba(31, 177, 105, .18);
-
-    animation: pulse 1.8s infinite;
-}
-
-.device-dot {
-    position: relative;
-
-    width: 13px;
-    height: 13px;
-
-    border-radius: 50%;
-
-    background: #1eaf68;
-
-    border: 3px solid white;
-}
-
-.map-info {
-    position: absolute;
-
-    left: 15px;
-    bottom: 15px;
-
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
 
-    padding: 9px 11px;
+    background: #edf4f2;
 
-    background: white;
-
-    border-radius: 9px;
-}
-
-.map-info svg {
-    width: 17px;
-    color: #20aa96;
-}
-
-.map-info strong {
-    display: block;
-    color: #4c595c;
-    font-size: 9px;
-}
-
-.map-info span {
-    display: block;
-    margin-top: 2px;
-    color: #899598;
-    font-size: 8px;
+    color: #6c7b7e;
+    font-size: 11px;
 }
 
 .location-status {
@@ -664,8 +716,13 @@ const lanjut = () => {
     background: #effaf5;
 }
 
+.invalid {
+    background: #fff5f0;
+}
+
 .location-status svg {
     width: 21px;
+    flex-shrink: 0;
 }
 
 .checking svg {
@@ -674,6 +731,10 @@ const lanjut = () => {
 
 .valid svg {
     color: #23aa69;
+}
+
+.invalid svg {
+    color: #d16a3f;
 }
 
 .location-status strong {
@@ -749,23 +810,17 @@ const lanjut = () => {
     }
 }
 
-@keyframes pulse {
+</style>
 
-    0% {
-        transform: scale(.8);
-        opacity: .8;
-    }
-
-    70% {
-        transform: scale(1.6);
-        opacity: 0;
-    }
-
-    100% {
-        transform: scale(1.6);
-        opacity: 0;
-    }
-
+<style>
+/* Global (bukan scoped) karena marker device dibuat lewat L.divIcon Leaflet,
+   yang me-render HTML di luar jangkauan <style scoped> komponen ini. */
+.leaflet-device-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #1eaf68;
+    border: 3px solid white;
+    box-shadow: 0 0 0 4px rgba(30, 175, 104, .25);
 }
-
 </style>

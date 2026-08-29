@@ -3,9 +3,11 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\EmployeeController;
+use App\Http\Controllers\Pegawai\AttendanceController as PegawaiAttendanceController;
 use App\Http\Controllers\Pegawai\DashboardController as PegawaiDashboardController;
 use App\Http\Controllers\Pegawai\ProfileController as PegawaiProfileController;
 use App\Http\Controllers\Admin\ReportController;
+use App\Http\Controllers\Admin\OfficeLocationController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -90,6 +92,22 @@ Route::get('/admin/laporan', function () {
     return Inertia::render('Auth/Admin/Report/Index');
 })->name('admin.reports.index');
 
+    // admin-pengaturan lokasi & radius absensi
+Route::get('/admin/pengaturan', [OfficeLocationController::class, 'index'])
+    ->name('admin.settings.index');
+
+Route::post('/admin/pengaturan/lokasi', [OfficeLocationController::class, 'store'])
+    ->name('admin.settings.lokasi.store');
+
+Route::put('/admin/pengaturan/lokasi/{location}', [OfficeLocationController::class, 'update'])
+    ->name('admin.settings.lokasi.update');
+
+Route::delete('/admin/pengaturan/lokasi/{location}', [OfficeLocationController::class, 'destroy'])
+    ->name('admin.settings.lokasi.destroy');
+
+Route::patch('/admin/pengaturan/lokasi/{location}/toggle-aktif', [OfficeLocationController::class, 'toggleActive'])
+    ->name('admin.settings.lokasi.toggle-aktif');
+
 // Pegawai
 Route::middleware(['auth', 'role:pegawai'])->group(function () {
 
@@ -100,17 +118,26 @@ Route::middleware(['auth', 'role:pegawai'])->group(function () {
     Route::get('/pegawai/profile', [PegawaiProfileController::class, 'show'])
         ->name('pegawai.profile');
 
-    Route::get('/pegawai/absensi', function () {
-        return Inertia::render('Auth/pegawai/Absensi');
-    })->name('pegawai.absensi');
+    Route::get('/pegawai/absensi', [PegawaiAttendanceController::class, 'index'])
+        ->name('pegawai.absensi');
 
-    Route::get('/pegawai/riwayat-absensi', function () {
-        return Inertia::render('Auth/pegawai/RiwayatAbsensi');
-    })->name('pegawai.riwayat');
+    Route::get('/pegawai/absensi/lokasi', [PegawaiAttendanceController::class, 'locationConfig'])
+        ->name('pegawai.absensi.lokasi');
 
-    Route::get('/pegawai/laporan', function () {
-        return Inertia::render('Auth/pegawai/Laporan');
-    })->name('pegawai.laporan');
+    Route::post('/pegawai/absensi/validasi-lokasi', [PegawaiAttendanceController::class, 'validateLocation'])
+        ->name('pegawai.absensi.validasi-lokasi');
+
+    Route::post('/pegawai/absensi/simpan', [PegawaiAttendanceController::class, 'store'])
+        ->name('pegawai.absensi.simpan');
+
+    Route::get('/pegawai/riwayat-absensi', [PegawaiAttendanceController::class, 'riwayat'])
+        ->name('pegawai.riwayat');
+        
+    Route::post('/pegawai/absensi/pulang', [PegawaiAttendanceController::class, 'storeCheckOut'])
+    ->name('pegawai.absensi.pulang');
+
+    Route::get('/pegawai/laporan', [PegawaiAttendanceController::class, 'laporan'])
+        ->name('pegawai.laporan');
 
     Route::get('/pegawai/pengaturan', [PegawaiProfileController::class, 'edit'])
         ->name('pegawai.pengaturan');

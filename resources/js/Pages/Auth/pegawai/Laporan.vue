@@ -1,4 +1,6 @@
 <script setup>
+import { computed } from 'vue'
+import { Head, Link, router } from '@inertiajs/vue3'
 import PegawaiLayout from './PegawaiLayout.vue'
 
 import {
@@ -6,25 +8,106 @@ import {
     ClockIcon,
     ExclamationTriangleIcon,
     CalendarDaysIcon,
+    ChevronLeftIcon,
+    ChevronRightIcon,
 } from '@heroicons/vue/24/outline'
+
+const props = defineProps({
+    rows: {
+        type: Array,
+        default: () => [],
+    },
+    summary: {
+        type: Object,
+        default: () => ({ hadir: 0, terlambat: 0, izin: 0, tidak_hadir: 0 }),
+    },
+    periode: {
+        type: Object,
+        required: true,
+    },
+})
+
+const methodLabel = {
+    face: 'Face Recognition',
+    otp: 'OTP',
+    alternative: 'Alternatif',
+}
+
+// Label "Agustus 2026" dari tahun & bulan yang dikirim backend
+const labelBulan = computed(() => {
+    const tanggal = new Date(props.periode.tahun, props.periode.bulan - 1, 1)
+    return tanggal.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })
+})
+
+// Baris tabel, tanggal & hari diformat ke Bahasa Indonesia
+const rows = computed(() =>
+    props.rows.map((item) => {
+        const tanggal = new Date(`${item.attendance_date}T00:00:00`)
+
+        return {
+            ...item,
+            dateShort: tanggal.toLocaleDateString('id-ID', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+            }),
+            dayLabel: tanggal.toLocaleDateString('id-ID', { weekday: 'long' }),
+            methodLabel: methodLabel[item.method] ?? (item.method ?? '—'),
+        }
+    })
+)
+
+const totalHari = computed(() => {
+    const s = props.summary
+    return s.hadir + s.terlambat + s.izin + s.tidak_hadir
+})
+
+function pergiKeBulan(periodeString) {
+    const [tahun, bulan] = periodeString.split('-')
+
+    router.get(
+        route('pegawai.laporan'),
+        { tahun, bulan },
+        { preserveState: true, preserveScroll: true }
+    )
+}
 </script>
 
 <template>
+    <Head title="Laporan Absensi" />
+
     <PegawaiLayout>
 
         <div class="page-container">
 
             <div class="page-header">
                 <div>
-                    <h1>Riwayat Absensi</h1>
+                    <h1>Laporan Absensi</h1>
                     <p>
-                        Lihat seluruh riwayat kehadiran Anda
+                        Lihat seluruh riwayat kehadiran Anda per bulan
                     </p>
                 </div>
 
                 <div class="filter-box">
-                    <CalendarDaysIcon />
-                    <span>Juli 2026</span>
+                    <button
+                        type="button"
+                        class="nav-button"
+                        @click="pergiKeBulan(periode.bulan_sebelumnya)"
+                    >
+                        <ChevronLeftIcon />
+                    </button>
+
+                    <CalendarDaysIcon class="calendar-icon" />
+                    <span>{{ labelBulan }}</span>
+
+                    <button
+                        type="button"
+                        class="nav-button"
+                        :disabled="!periode.bisa_ke_bulan_berikutnya"
+                        @click="pergiKeBulan(periode.bulan_berikutnya)"
+                    >
+                        <ChevronRightIcon />
+                    </button>
                 </div>
             </div>
 
@@ -33,25 +116,25 @@ import {
 
                 <div class="summary-card">
                     <span>Total Kehadiran</span>
-                    <strong>20 Hari</strong>
+                    <strong>{{ summary.hadir }} Hari</strong>
                     <small>Dalam bulan ini</small>
                 </div>
 
                 <div class="summary-card">
                     <span>Terlambat</span>
-                    <strong>2 Hari</strong>
+                    <strong>{{ summary.terlambat }} Hari</strong>
                     <small>Perlu diperhatikan</small>
                 </div>
 
                 <div class="summary-card">
                     <span>Izin</span>
-                    <strong>1 Hari</strong>
-                    <small>Disetujui</small>
+                    <strong>{{ summary.izin }} Hari</strong>
+                    <small>Absensi alternatif</small>
                 </div>
 
                 <div class="summary-card">
                     <span>Tidak Hadir</span>
-                    <strong>0 Hari</strong>
+                    <strong>{{ summary.tidak_hadir }} Hari</strong>
                     <small>Tanpa keterangan</small>
                 </div>
 
@@ -63,12 +146,8 @@ import {
                 <div class="card-header">
                     <div>
                         <h2>Daftar Riwayat</h2>
-                        <p>Riwayat absensi bulan Juli 2026</p>
+                        <p>Riwayat absensi bulan {{ labelBulan }}</p>
                     </div>
-
-                    <button class="export-button">
-                        Export
-                    </button>
                 </div>
 
                 <div class="table-wrapper">
@@ -79,7 +158,6 @@ import {
                             <tr>
                                 <th>Tanggal</th>
                                 <th>Jam Masuk</th>
-                                <th>Jam Keluar</th>
                                 <th>Metode</th>
                                 <th>Status</th>
                             </tr>
@@ -87,118 +165,50 @@ import {
 
                         <tbody>
 
-                            <tr>
+                            <tr v-for="item in rows" :key="item.attendance_date">
                                 <td>
-                                    <strong>30 Jul 2026</strong>
-                                    <span>Kamis</span>
+                                    <strong>{{ item.dateShort }}</strong>
+                                    <span>{{ item.dayLabel }}</span>
                                 </td>
 
-                                <td>07:52</td>
-                                <td>—</td>
+                                <td>{{ item.check_in_at ?? '—' }}</td>
 
                                 <td>
-                                    <span class="method">
-                                        Face Recognition
+                                    <span
+                                        class="method"
+                                        :class="{ otp: item.method === 'otp' }"
+                                    >
+                                        {{ item.methodLabel }}
                                     </span>
                                 </td>
 
                                 <td>
-                                    <span class="status success">
+                                    <span
+                                        v-if="item.status === 'hadir'"
+                                        class="status success"
+                                    >
                                         <CheckCircleIcon />
                                         Hadir
                                     </span>
-                                </td>
-                            </tr>
 
-                            <tr>
-                                <td>
-                                    <strong>29 Jul 2026</strong>
-                                    <span>Rabu</span>
-                                </td>
-
-                                <td>07:55</td>
-                                <td>16:05</td>
-
-                                <td>
-                                    <span class="method">
-                                        Face Recognition
-                                    </span>
-                                </td>
-
-                                <td>
-                                    <span class="status success">
-                                        <CheckCircleIcon />
-                                        Hadir
-                                    </span>
-                                </td>
-                            </tr>
-
-                            <tr>
-                                <td>
-                                    <strong>28 Jul 2026</strong>
-                                    <span>Selasa</span>
-                                </td>
-
-                                <td>08:15</td>
-                                <td>16:10</td>
-
-                                <td>
-                                    <span class="method otp">
-                                        OTP
-                                    </span>
-                                </td>
-
-                                <td>
-                                    <span class="status late">
+                                    <span
+                                        v-else-if="item.status === 'terlambat'"
+                                        class="status late"
+                                    >
                                         <ExclamationTriangleIcon />
                                         Terlambat
                                     </span>
-                                </td>
-                            </tr>
 
-                            <tr>
-                                <td>
-                                    <strong>27 Jul 2026</strong>
-                                    <span>Senin</span>
-                                </td>
-
-                                <td>07:48</td>
-                                <td>16:02</td>
-
-                                <td>
-                                    <span class="method">
-                                        Face Recognition
-                                    </span>
-                                </td>
-
-                                <td>
-                                    <span class="status success">
-                                        <CheckCircleIcon />
-                                        Hadir
+                                    <span v-else class="status izin">
+                                        <ClockIcon />
+                                        Izin
                                     </span>
                                 </td>
                             </tr>
 
-                            <tr>
-                                <td>
-                                    <strong>24 Jul 2026</strong>
-                                    <span>Jumat</span>
-                                </td>
-
-                                <td>07:50</td>
-                                <td>16:00</td>
-
-                                <td>
-                                    <span class="method">
-                                        Face Recognition
-                                    </span>
-                                </td>
-
-                                <td>
-                                    <span class="status success">
-                                        <CheckCircleIcon />
-                                        Hadir
-                                    </span>
+                            <tr v-if="rows.length === 0">
+                                <td colspan="4" class="empty-row">
+                                    Belum ada riwayat absensi di bulan ini.
                                 </td>
                             </tr>
 
@@ -246,7 +256,7 @@ import {
     align-items: center;
     gap: 7px;
 
-    padding: 9px 13px;
+    padding: 6px 8px;
 
     background: white;
 
@@ -257,9 +267,39 @@ import {
     font-size: 11px;
 }
 
-.filter-box svg {
+.filter-box .calendar-icon {
     width: 17px;
     color: #20aa97;
+}
+
+.nav-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 24px;
+    height: 24px;
+
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+
+    color: #536164;
+    cursor: pointer;
+}
+
+.nav-button:hover:not(:disabled) {
+    background: #f0f7f6;
+    color: #20a995;
+}
+
+.nav-button:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.nav-button svg {
+    width: 16px;
 }
 
 /* SUMMARY */
@@ -320,18 +360,6 @@ import {
 .card-header p {
     margin: 4px 0 0;
     color: #899598;
-    font-size: 10px;
-}
-
-.export-button {
-    padding: 8px 14px;
-
-    border: 1px solid #dce9e7;
-    border-radius: 8px;
-
-    background: white;
-    color: #20a995;
-
     font-size: 10px;
 }
 
@@ -421,6 +449,17 @@ td span:not(.method):not(.status) {
 .status.late {
     background: #fff0bd;
     color: #c58b00;
+}
+
+.status.izin {
+    background: #dbeeff;
+    color: #1c7ed6;
+}
+
+.empty-row {
+    text-align: center;
+    padding: 40px 11px !important;
+    color: #a3adb0;
 }
 
 @media (max-width: 800px) {

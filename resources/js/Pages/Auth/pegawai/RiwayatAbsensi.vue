@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from 'vue';
 import { Head } from '@inertiajs/vue3';
 import {
     ClockIcon,
@@ -8,36 +9,44 @@ import {
 
 import PegawaiLayout from './PegawaiLayout.vue';
 
-const histories = [
-    {
-        date: '30 Juli 2026',
-        masuk: '07:52',
-        keluar: '16:05',
-        method: 'Face Recognition',
-        status: 'Hadir',
+const props = defineProps({
+    histories: {
+        type: Array,
+        default: () => [],
     },
-    {
-        date: '29 Juli 2026',
-        masuk: '07:55',
-        keluar: '16:10',
-        method: 'Face Recognition',
-        status: 'Hadir',
-    },
-    {
-        date: '28 Juli 2026',
-        masuk: '08:15',
-        keluar: '16:10',
-        method: 'OTP Code',
-        status: 'Terlambat',
-    },
-    {
-        date: '27 Juli 2026',
-        masuk: '07:49',
-        keluar: '16:02',
-        method: 'Face Recognition',
-        status: 'Hadir',
-    },
-];
+});
+
+// Label status buat ditampilkan (samakan istilah dengan tabel `attendances`)
+const statusLabel = {
+    hadir: 'Hadir',
+    terlambat: 'Terlambat',
+    alternatif: 'Izin',
+};
+
+const methodLabel = {
+    face: 'Face Recognition',
+    otp: 'OTP Code',
+    alternative: 'Absensi Alternatif',
+};
+
+// Susun ulang data dari server: format tanggal ke Bahasa Indonesia,
+// terjemahkan status & metode.
+const rows = computed(() =>
+    props.histories.map((item) => {
+        const tanggal = new Date(`${item.attendance_date}T00:00:00`);
+
+        return {
+            ...item,
+            dateLabel: tanggal.toLocaleDateString('id-ID', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+            }),
+            statusLabel: statusLabel[item.status] ?? item.status,
+            methodLabel: methodLabel[item.method] ?? (item.method ?? '—'),
+        };
+    })
+);
 </script>
 
 <template>
@@ -80,10 +89,6 @@ const histories = [
                             </th>
 
                             <th class="px-5 py-4">
-                                Jam Keluar
-                            </th>
-
-                            <th class="px-5 py-4">
                                 Metode
                             </th>
 
@@ -96,31 +101,27 @@ const histories = [
                     <tbody>
 
                         <tr
-                            v-for="item in histories"
-                            :key="item.date"
+                            v-for="item in rows"
+                            :key="item.attendance_date"
                             class="border-t border-slate-100"
                         >
 
                             <td class="px-5 py-4 font-medium">
-                                {{ item.date }}
+                                {{ item.dateLabel }}
                             </td>
 
                             <td class="px-5 py-4">
-                                {{ item.masuk }}
-                            </td>
-
-                            <td class="px-5 py-4">
-                                {{ item.keluar }}
+                                {{ item.check_in_at ?? '—' }}
                             </td>
 
                             <td class="px-5 py-4 text-slate-500">
-                                {{ item.method }}
+                                {{ item.methodLabel }}
                             </td>
 
                             <td class="px-5 py-4">
 
                                 <span
-                                    v-if="item.status === 'Hadir'"
+                                    v-if="item.status === 'hadir'"
                                     class="inline-flex items-center gap-1 rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-600"
                                 >
                                     <CheckCircleIcon class="h-4 w-4" />
@@ -128,15 +129,32 @@ const histories = [
                                 </span>
 
                                 <span
-                                    v-else
+                                    v-else-if="item.status === 'terlambat'"
                                     class="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-3 py-1 text-xs font-medium text-yellow-600"
                                 >
                                     <ExclamationTriangleIcon class="h-4 w-4" />
                                     Terlambat
                                 </span>
 
+                                <span
+                                    v-else
+                                    class="inline-flex items-center gap-1 rounded-full bg-sky-100 px-3 py-1 text-xs font-medium text-sky-600"
+                                >
+                                    <ClockIcon class="h-4 w-4" />
+                                    {{ item.statusLabel }}
+                                </span>
+
                             </td>
 
+                        </tr>
+
+                        <tr v-if="rows.length === 0">
+                            <td
+                                colspan="4"
+                                class="px-5 py-10 text-center text-sm text-slate-400"
+                            >
+                                Belum ada riwayat absensi.
+                            </td>
                         </tr>
 
                     </tbody>

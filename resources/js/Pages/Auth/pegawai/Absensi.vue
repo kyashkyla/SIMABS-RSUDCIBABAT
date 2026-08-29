@@ -11,7 +11,22 @@ import AttendanceSuccess from '@/Components/pegawai/AttendanceSuccess.vue'
 import AlternativeAttendanceForm from '@/Components/pegawai/AlternativeAttendanceForm.vue'
 import WaitingApproval from '@/Components/pegawai/WaitingApproval.vue'
 
+const props = defineProps({
+    employee: {
+        type: Object,
+        required: true, // { id, name, photo_url }
+    },
+    todayAttendance: {
+        type: Object,
+        default: null,
+    },
+})
+
 const step = ref('location')
+
+// Koordinat device yang sudah tervalidasi di step lokasi, dipakai lagi
+// saat menyimpan absensi di step Face Recognition / OTP.
+const deviceLocation = ref(null)
 
 /*
 |--------------------------------------------------------------------------
@@ -51,7 +66,9 @@ const attendanceMethod = ref('')
 |
 */
 
-const locationConfirmed = () => {
+const locationConfirmed = (location) => {
+    deviceLocation.value = location
+
     if (
         approvalStatus.value === 'temporary' ||
         approvalStatus.value === 'permanent'
@@ -68,7 +85,7 @@ const locationConfirmed = () => {
 |--------------------------------------------------------------------------
 */
 
-const faceSuccess = () => {
+const faceSuccess = (attendance) => {
     attendanceMethod.value = 'Face Recognition'
     step.value = 'success'
 }
@@ -161,6 +178,8 @@ const finishAttendance = () => {
 
             <FaceRecognition
                 v-else-if="step === 'face'"
+                :employee="props.employee"
+                :device-location="deviceLocation"
                 @success="faceSuccess"
                 @failed="faceFailed"
             />

@@ -10,7 +10,6 @@ import {
     BellIcon,
     ShieldCheckIcon,
     PencilIcon,
-    CameraIcon,
     XMarkIcon,
     CheckIcon,
     KeyIcon,
@@ -369,7 +368,7 @@ onBeforeUnmount(() => {
 
                     <div class="edit-photo-area">
 
-                        <div class="profile-photo large">
+                        <label class="profile-photo large photo-upload">
 
                             <img
                                 v-if="photoPreview"
@@ -381,19 +380,20 @@ onBeforeUnmount(() => {
                                 v-else
                             />
 
-                            <label class="photo-edit-button">
+                            <div class="photo-hover-overlay">
 
-                                <CameraIcon />
+                                <PencilIcon />
 
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    @change="pilihFotoProfil"
-                                />
+                            </div>
 
-                            </label>
+                            <input
+                                type="file"
+                                accept="image/*"
+                                class="photo-input-hidden"
+                                @change="pilihFotoProfil"
+                            />
 
-                        </div>
+                        </label>
 
 
                         <div class="photo-description">
@@ -1168,14 +1168,19 @@ onBeforeUnmount(() => {
     width: 48px;
 }
 
-.photo-edit-button {
+/* Foto profil di mode edit: bisa diklik, dan saat di-hover
+   muncul overlay gelap + ikon pensil di tengah */
+
+.photo-upload {
+    display: flex;
+
+    cursor: pointer;
+}
+
+.photo-hover-overlay {
     position: absolute;
 
-    right: -2px;
-    bottom: -2px;
-
-    width: 28px;
-    height: 28px;
+    inset: 0;
 
     display: flex;
 
@@ -1184,20 +1189,25 @@ onBeforeUnmount(() => {
 
     border-radius: 50%;
 
-    background: #20ad98;
+    background: rgba(20, 40, 38, .55);
 
-    border: 3px solid white;
+    opacity: 0;
 
-    cursor: pointer;
+    transition: opacity .2s;
 }
 
-.photo-edit-button svg {
-    width: 14px;
+.photo-upload:hover .photo-hover-overlay,
+.photo-upload:focus-within .photo-hover-overlay {
+    opacity: 1;
+}
+
+.photo-hover-overlay svg {
+    width: 26px;
 
     color: white;
 }
 
-.photo-edit-button input {
+.photo-input-hidden {
     display: none;
 }
 
