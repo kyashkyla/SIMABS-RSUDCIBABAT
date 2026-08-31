@@ -24,6 +24,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // Notifikasi Sistem (Bisa admin maupun pegawai)
+    Route::put('/notifications/{id}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
+    Route::put('/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
 });
 
 /*
@@ -90,10 +94,6 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::put('/pengaturan-umum/jam-kerja', [SettingController::class, 'updateJamKerja'])->name('settings.jam-kerja');
     Route::put('/pengaturan-umum/notifikasi', [SettingController::class, 'updateNotifikasi'])->name('settings.notifikasi');
     Route::put('/pengaturan-umum/password', [SettingController::class, 'updatePassword'])->name('settings.password');
-
-    // Notifikasi Sistem (KF-12)
-    Route::put('/notifications/{id}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
-    Route::put('/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
 });
 
 /*
@@ -121,6 +121,12 @@ Route::middleware(['auth', 'role:pegawai'])->group(function () {
 
     Route::post('/pegawai/absensi/simpan', [PegawaiAttendanceController::class, 'store'])
         ->name('pegawai.absensi.simpan');
+
+    Route::post('/pegawai/absensi/alternatif', [\App\Http\Controllers\Pegawai\AlternativeRequestController::class, 'store'])
+        ->name('pegawai.absensi.alternatif.store');
+
+    Route::post('/pegawai/absensi/otp/request', [PegawaiAttendanceController::class, 'requestOtp'])
+        ->name('pegawai.absensi.otp.request');
 
     Route::get('/pegawai/riwayat-absensi', [PegawaiAttendanceController::class, 'riwayat'])
         ->name('pegawai.riwayat');

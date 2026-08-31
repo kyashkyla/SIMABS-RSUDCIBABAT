@@ -13,8 +13,15 @@ const flashSuccess = computed(() => page.props.flash?.success)
 
 // ================= JAM KERJA =================
 const jamKerjaForm = useForm({
-    work_start: props.jamKerja.workStart,
-    work_end: props.jamKerja.workEnd,
+    work_start_pagi: props.jamKerja.workStartPagi,
+    work_end_pagi: props.jamKerja.workEndPagi,
+    
+    work_start_siang: props.jamKerja.workStartSiang,
+    work_end_siang: props.jamKerja.workEndSiang,
+    
+    work_start_malam: props.jamKerja.workStartMalam,
+    work_end_malam: props.jamKerja.workEndMalam,
+    
     late_tolerance: props.jamKerja.lateTolerance,
 })
 
@@ -91,31 +98,94 @@ const savePassword = () => {
 
                 <form @submit.prevent="saveJamKerja" class="space-y-4">
 
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-                        <div>
-                            <label class="text-sm font-medium text-slate-600">Jam Masuk</label>
-                            <input
-                                v-model="jamKerjaForm.work_start"
-                                type="time"
-                                class="mt-1.5 w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                            />
-                            <p v-if="jamKerjaForm.errors.work_start" class="mt-1 text-sm text-red-600">
-                                {{ jamKerjaForm.errors.work_start }}
-                            </p>
+                    <!-- SHIFT PAGI -->
+                    <div class="p-4 border border-slate-100 rounded-xl bg-slate-50/50 mb-4">
+                        <h3 class="font-medium text-slate-700 mb-3 text-sm">Shift Pagi</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-sm font-medium text-slate-600">Jam Masuk</label>
+                                <input
+                                    v-model="jamKerjaForm.work_start_pagi"
+                                    type="time"
+                                    class="mt-1.5 w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                                />
+                                <p v-if="jamKerjaForm.errors.work_start_pagi" class="mt-1 text-sm text-red-600">
+                                    {{ jamKerjaForm.errors.work_start_pagi }}
+                                </p>
+                            </div>
+                            <div>
+                                <label class="text-sm font-medium text-slate-600">Jam Pulang</label>
+                                <input
+                                    v-model="jamKerjaForm.work_end_pagi"
+                                    type="time"
+                                    class="mt-1.5 w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                                />
+                                <p v-if="jamKerjaForm.errors.work_end_pagi" class="mt-1 text-sm text-red-600">
+                                    {{ jamKerjaForm.errors.work_end_pagi }}
+                                </p>
+                            </div>
                         </div>
+                    </div>
 
-                        <div>
-                            <label class="text-sm font-medium text-slate-600">Jam Pulang</label>
-                            <input
-                                v-model="jamKerjaForm.work_end"
-                                type="time"
-                                class="mt-1.5 w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                            />
-                            <p v-if="jamKerjaForm.errors.work_end" class="mt-1 text-sm text-red-600">
-                                {{ jamKerjaForm.errors.work_end }}
-                            </p>
+                    <!-- SHIFT SIANG -->
+                    <div class="p-4 border border-slate-100 rounded-xl bg-slate-50/50 mb-4">
+                        <h3 class="font-medium text-slate-700 mb-3 text-sm">Shift Siang</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-sm font-medium text-slate-600">Jam Masuk</label>
+                                <input
+                                    v-model="jamKerjaForm.work_start_siang"
+                                    type="time"
+                                    class="mt-1.5 w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                                />
+                                <p v-if="jamKerjaForm.errors.work_start_siang" class="mt-1 text-sm text-red-600">
+                                    {{ jamKerjaForm.errors.work_start_siang }}
+                                </p>
+                            </div>
+                            <div>
+                                <label class="text-sm font-medium text-slate-600">Jam Pulang</label>
+                                <input
+                                    v-model="jamKerjaForm.work_end_siang"
+                                    type="time"
+                                    class="mt-1.5 w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                                />
+                                <p v-if="jamKerjaForm.errors.work_end_siang" class="mt-1 text-sm text-red-600">
+                                    {{ jamKerjaForm.errors.work_end_siang }}
+                                </p>
+                            </div>
                         </div>
+                    </div>
+
+                    <!-- SHIFT MALAM -->
+                    <div class="p-4 border border-slate-100 rounded-xl bg-slate-50/50 mb-4">
+                        <h3 class="font-medium text-slate-700 mb-3 text-sm">Shift Malam</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-sm font-medium text-slate-600">Jam Masuk</label>
+                                <input
+                                    v-model="jamKerjaForm.work_start_malam"
+                                    type="time"
+                                    class="mt-1.5 w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                                />
+                                <p v-if="jamKerjaForm.errors.work_start_malam" class="mt-1 text-sm text-red-600">
+                                    {{ jamKerjaForm.errors.work_start_malam }}
+                                </p>
+                            </div>
+                            <div>
+                                <label class="text-sm font-medium text-slate-600">Jam Pulang</label>
+                                <input
+                                    v-model="jamKerjaForm.work_end_malam"
+                                    type="time"
+                                    class="mt-1.5 w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                                />
+                                <p v-if="jamKerjaForm.errors.work_end_malam" class="mt-1 text-sm text-red-600">
+                                    {{ jamKerjaForm.errors.work_end_malam }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 
                         <div>
                             <label class="text-sm font-medium text-slate-600">Toleransi (menit)</label>

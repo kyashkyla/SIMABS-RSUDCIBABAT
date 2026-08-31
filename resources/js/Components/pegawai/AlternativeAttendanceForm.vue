@@ -7,6 +7,8 @@ import {
     PaperAirplaneIcon,
 } from '@heroicons/vue/24/outline'
 
+import { router } from '@inertiajs/vue3'
+
 const emit = defineEmits(['submitted'])
 
 const alasan = ref('')
@@ -24,17 +26,20 @@ const pilihIdCard = (event) => {
 }
 
 const kirimPengajuan = () => {
-
-    if (
-        !alasan.value ||
-        !selfieFile.value ||
-        !idCardFile.value
-    ) {
+    if (!alasan.value || !selfieFile.value || !idCardFile.value) {
         return
     }
 
-    emit('submitted')
+    const formData = new FormData()
+    formData.append('reason', alasan.value + (keterangan.value ? ' - ' + keterangan.value : ''))
+    formData.append('selfie_photo', selfieFile.value)
+    formData.append('id_card_photo', idCardFile.value)
 
+    router.post(route('pegawai.absensi.alternatif.store'), formData, {
+        onSuccess: () => {
+            emit('submitted')
+        }
+    })
 }
 
 </script>

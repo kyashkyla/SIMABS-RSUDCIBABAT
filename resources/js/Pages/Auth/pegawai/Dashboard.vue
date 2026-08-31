@@ -250,7 +250,7 @@ onUnmounted(() => {
                 <div class="stat-card">
 
                     <div class="stat-card-header">
-                        <span>Jam Masuk</span>
+                        <span>Jam Masuk ({{ employee?.shift_details?.start ?? '07:00' }})</span>
 
                         <div class="stat-icon">
                             <ClockIcon />
@@ -261,7 +261,7 @@ onUnmounted(() => {
                         {{ jamMasukLabel }}
                     </div>
 
-                    <p>{{ todayAttendance ? 'Absensi masuk tercatat' : 'Belum absen masuk' }}</p>
+                    <p>{{ todayAttendance ? 'Absensi masuk tercatat' : 'Batas toleransi: ' + (employee?.shift_details?.late_after ?? '-') }}</p>
 
                 </div>
 
@@ -270,18 +270,18 @@ onUnmounted(() => {
                 <div class="stat-card">
 
                     <div class="stat-card-header">
-                        <span>Jam Keluar</span>
+                        <span>Jam Keluar ({{ employee?.shift_details?.end ?? '15:00' }})</span>
 
                         <div class="stat-icon">
                             <ClockIcon />
                         </div>
                     </div>
 
-                    <div class="stat-value empty">
-                        —
+                    <div class="stat-value" :class="{ empty: !todayAttendance?.check_out_at }">
+                        {{ todayAttendance?.check_out_at ?? '—' }}
                     </div>
 
-                    <p>Belum absen keluar</p>
+                    <p>{{ todayAttendance?.check_out_at ? 'Absensi keluar tercatat' : 'Belum absen keluar' }}</p>
 
                 </div>
 
@@ -325,12 +325,18 @@ onUnmounted(() => {
 
                         <!-- Mulai Absensi -->
                         <Link
+                            v-if="!(todayAttendance?.check_in_at && todayAttendance?.check_out_at)"
                             :href="route('pegawai.absensi')"
                             class="attendance-button"
                         >
                             <ClockIcon />
-                            <span>Mulai Absensi</span>
+                            <span>{{ todayAttendance?.check_in_at ? 'Absen Pulang' : 'Mulai Absensi' }}</span>
                         </Link>
+                        
+                        <div v-else class="p-4 mb-4 bg-emerald-50 text-emerald-700 text-sm rounded-xl font-medium border border-emerald-100 flex items-center gap-3">
+                            <CheckCircleIcon class="w-5 h-5" />
+                            Anda sudah menyelesaikan absensi hari ini.
+                        </div>
 
 
                         <!-- Tombol lainnya -->

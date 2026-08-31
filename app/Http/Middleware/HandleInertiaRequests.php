@@ -49,7 +49,7 @@ class HandleInertiaRequests extends Middleware
             'notifications' => function () use ($request) {
                 $user = $request->user();
 
-                if (!$user || $user->role !== 'admin') {
+                if (!$user) {
                     return null;
                 }
 

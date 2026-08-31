@@ -28,6 +28,29 @@ class AttendanceController extends Controller
 
         abort_if(!$employee, 404, 'Data pegawai tidak ditemukan.');
 
+        $activeRequest = \App\Models\AttendanceRequest::where('employee_id', $employee->id)
+            ->where('status', 'approved')
+            ->where(function ($q) {
+                $q->where('approval_type', 'permanen')
+                  ->orWhere(function ($q2) {
+                      $q2->where('approval_type', 'sementara')
+                         ->whereDate('decided_at', now()->toDateString());
+                  });
+            })
+            ->latest('decided_at')
+            ->first();
+            
+        $pendingRequest = \App\Models\AttendanceRequest::where('employee_id', $employee->id)
+            ->where('status', 'pending')
+            ->exists();
+
+        $approvalStatus = 'none';
+        if ($pendingRequest) {
+            $approvalStatus = 'pending';
+        } elseif ($activeRequest) {
+            $approvalStatus = $activeRequest->approval_type == 'permanen' ? 'permanent' : 'temporary';
+        }
+
         return Inertia::render('Auth/pegawai/Absensi', [
             'employee' => [
                 'id' => $employee->id,
@@ -35,6 +58,7 @@ class AttendanceController extends Controller
                 'photo_url' => $employee->photo ? Storage::url($employee->photo) : null,
             ],
             'todayAttendance' => $employee->todayAttendance(),
+            'approvalStatus' => $approvalStatus,
         ]);
     }
 
@@ -101,10 +125,42 @@ class AttendanceController extends Controller
             'longitude' => ['required', 'numeric', 'between:-180,180'],
             'method' => ['required', 'in:face,otp,alternative'],
             'photo' => ['nullable', 'string'],
+            'otp_code' => ['nullable', 'string', 'size:6'],
         ]);
 
         $employee = Auth::user()->employee;
         abort_if(!$employee, 404, 'Data pegawai tidak ditemukan.');
+
+        if ($data['method'] === 'otp') {
+            abort_if(empty($data['otp_code']), 422, 'Kode OTP wajib diisi.');
+            
+            $cachedOtp = \Illuminate\Support\Facades\Cache::get('otp_' . $employee->id);
+            if (!$cachedOtp || $cachedOtp !== strtoupper($data['otp_code'])) {
+                return response()->json([
+                    'message' => 'Kode OTP tidak valid atau sudah kedaluwarsa.',
+                ], 422);
+            }
+            
+            $activeRequest = \App\Models\AttendanceRequest::where('employee_id', $employee->id)
+                ->where('status', 'approved')
+                ->where(function ($q) {
+                    $q->where('approval_type', 'permanen')
+                      ->orWhere(function ($q2) {
+                          $q2->where('approval_type', 'sementara')
+                             ->whereDate('decided_at', now()->toDateString());
+                      });
+                })
+                ->exists();
+                
+            if (!$activeRequest) {
+                return response()->json([
+                    'message' => 'Anda tidak memiliki izin absensi OTP aktif.',
+                ], 422);
+            }
+            
+            // Hapus OTP setelah berhasil digunakan
+            \Illuminate\Support\Facades\Cache::forget('otp_' . $employee->id);
+        }
 
         // Jendela absen masuk mengikuti shift pegawai ini, bukan jam kantor
         // umum -> shift Pagi/Siang/Malam masing-masing punya jamnya sendiri.
@@ -181,10 +237,41 @@ class AttendanceController extends Controller
             'longitude' => ['required', 'numeric', 'between:-180,180'],
             'method' => ['required', 'in:face,otp,alternative'],
             'photo' => ['nullable', 'string'],
+            'otp_code' => ['nullable', 'string', 'size:6'],
         ]);
 
         $employee = Auth::user()->employee;
         abort_if(!$employee, 404, 'Data pegawai tidak ditemukan.');
+
+        if ($data['method'] === 'otp') {
+            abort_if(empty($data['otp_code']), 422, 'Kode OTP wajib diisi.');
+            
+            $cachedOtp = \Illuminate\Support\Facades\Cache::get('otp_' . $employee->id);
+            if (!$cachedOtp || $cachedOtp !== strtoupper($data['otp_code'])) {
+                return response()->json([
+                    'message' => 'Kode OTP tidak valid atau sudah kedaluwarsa.',
+                ], 422);
+            }
+            
+            $activeRequest = \App\Models\AttendanceRequest::where('employee_id', $employee->id)
+                ->where('status', 'approved')
+                ->where(function ($q) {
+                    $q->where('approval_type', 'permanen')
+                      ->orWhere(function ($q2) {
+                          $q2->where('approval_type', 'sementara')
+                             ->whereDate('decided_at', now()->toDateString());
+                      });
+                })
+                ->exists();
+                
+            if (!$activeRequest) {
+                return response()->json([
+                    'message' => 'Anda tidak memiliki izin absensi OTP aktif.',
+                ], 422);
+            }
+            
+            \Illuminate\Support\Facades\Cache::forget('otp_' . $employee->id);
+        }
 
         $attendance = $employee->todayAttendance();
 
@@ -437,5 +524,36 @@ class AttendanceController extends Controller
         Storage::disk('public')->put($filename, $content);
 
         return $filename;
+    }
+    public function requestOtp(Request $request): JsonResponse
+    {
+        $employee = Auth::user()->employee;
+        abort_if(!$employee, 404, 'Data pegawai tidak ditemukan.');
+
+        $activeRequest = \App\Models\AttendanceRequest::where('employee_id', $employee->id)
+            ->where('status', 'approved')
+            ->where(function ($q) {
+                $q->where('approval_type', 'permanen')
+                  ->orWhere(function ($q2) {
+                      $q2->where('approval_type', 'sementara')
+                         ->whereDate('decided_at', now()->toDateString());
+                  });
+            })
+            ->exists();
+
+        if (!$activeRequest) {
+            return response()->json([
+                'message' => 'Anda tidak memiliki izin absensi OTP aktif.',
+            ], 422);
+        }
+
+        $otpCode = strtoupper(\Illuminate\Support\Str::random(6));
+        \Illuminate\Support\Facades\Cache::put('otp_' . $employee->id, $otpCode, now()->addMinutes(3));
+
+        $request->user()->notify(new \App\Notifications\OtpNotification($otpCode));
+
+        return response()->json([
+            'message' => 'Kode OTP berhasil dikirim ke notifikasi Anda.',
+        ]);
     }
 }

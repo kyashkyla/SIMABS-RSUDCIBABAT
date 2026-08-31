@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted, watch, computed } from 'vue';
-import { Link, usePage } from '@inertiajs/vue3';
+import { Link, usePage, router } from '@inertiajs/vue3';
 
 import {
     Menu,
@@ -13,6 +13,7 @@ import {
     BarChart3,
     Settings,
     LogOut,
+    CheckCircle as CheckCircleIcon,
 } from 'lucide-vue-next';
 
 
@@ -48,6 +49,7 @@ const tanggalHariIni = computed(() => {
 
 const sidebarCollapsed = ref(false);
 const profileOpen = ref(false);
+const notifOpen = ref(false);
 
 
 // Ambil kondisi sidebar terakhir dari browser
@@ -338,20 +340,43 @@ const isActive = (routeName) => {
                 <div class="flex items-center gap-6">
 
                     <!-- NOTIFICATION -->
-                    <button
-                        class="relative flex h-10 w-10 items-center justify-center rounded-full hover:bg-slate-100"
-                    >
+                    <div class="relative">
+                        <button
+                            @click="notifOpen = !notifOpen"
+                            class="relative flex h-10 w-10 items-center justify-center rounded-full hover:bg-slate-100"
+                        >
+                            <Bell class="h-6 w-6 text-slate-500" stroke-width="1.7" />
+                            <span v-if="page.props.notifications?.unreadCount > 0" class="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] text-white">
+                                {{ page.props.notifications.unreadCount }}
+                            </span>
+                        </button>
 
-                        <Bell
-                            class="h-6 w-6 text-slate-500"
-                            stroke-width="1.7"
-                        />
-
-                        <span
-                            class="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-red-500"
-                        ></span>
-
-                    </button>
+                        <div v-if="notifOpen" class="absolute right-0 top-14 w-80 overflow-hidden rounded-xl border border-slate-200 bg-white py-2 shadow-xl z-50">
+                            <div class="px-4 py-2 border-b border-slate-100 flex justify-between items-center">
+                                <span class="font-bold text-sm">Notifikasi</span>
+                            </div>
+                            
+                            <div class="max-h-64 overflow-y-auto">
+                                <div v-if="page.props.notifications?.latest?.length === 0" class="p-4 text-center text-sm text-slate-500">
+                                    Belum ada notifikasi.
+                                </div>
+                                <button 
+                                    v-for="notif in page.props.notifications?.latest" 
+                                    :key="notif.id"
+                                    @click="router.put(route('notifications.read', notif.id)); notifOpen = false;"
+                                    class="w-full text-left px-4 py-3 border-b border-slate-50 hover:bg-slate-50 transition flex gap-3"
+                                    :class="!notif.read && 'bg-emerald-50/50'"
+                                >
+                                    <span class="mt-1.5 w-2 h-2 rounded-full flex-shrink-0" :class="notif.read ? 'bg-slate-200' : 'bg-emerald-500'"></span>
+                                    <div class="min-w-0">
+                                        <p class="text-xs font-semibold text-slate-800">{{ notif.title }}</p>
+                                        <p class="text-xs text-slate-600 mt-1">{{ notif.message }}</p>
+                                        <p class="text-[10px] text-slate-400 mt-1">{{ notif.time }}</p>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
 
 
                     <!-- PROFILE -->
@@ -464,6 +489,20 @@ const isActive = (routeName) => {
                 <slot />
             </main>
 
+        </div>
+        
+        <!-- ================================================= -->
+        <!-- TOAST / FLASH MESSAGES -->
+        <!-- ================================================= -->
+        <div v-if="page.props.flash?.success" class="fixed bottom-6 right-6 z-50 rounded-xl bg-teal-500 px-6 py-4 text-white shadow-xl flex items-center gap-3">
+            <CheckCircleIcon class="h-6 w-6 text-white" />
+            <div>
+                <p class="font-bold text-sm">Berhasil</p>
+                <p class="text-xs">{{ page.props.flash.success }}</p>
+            </div>
+            <button @click="page.props.flash.success = null" class="ml-4 text-white hover:text-slate-200">
+                &times;
+            </button>
         </div>
 
     </div>

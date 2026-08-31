@@ -20,6 +20,10 @@ const props = defineProps({
         type: Object,
         required: true, // { latitude, longitude }
     },
+    isCheckOut: {
+        type: Boolean,
+        default: false,
+    },
 })
 
 const emit = defineEmits(['success', 'failed'])
@@ -49,7 +53,7 @@ let referenceDescriptor = null
 
 // Jarak Euclidean maksimum antar descriptor supaya dianggap "wajah sama".
 // Semakin kecil = semakin ketat. 0.5-0.6 adalah rentang umum face-api.js.
-const MATCH_THRESHOLD = 0.55
+const MATCH_THRESHOLD = 0.60
 
 const FACEAPI_JS = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js'
 const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights'
@@ -98,14 +102,19 @@ const setup = async () => {
 }
 
 const computeReferenceDescriptor = async (faceapi) => {
-    const img = await faceapi.fetchImage(props.employee.photo_url)
+    try {
+        const img = await faceapi.fetchImage(props.employee.photo_url)
 
-    const detection = await faceapi
-        .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
-        .withFaceLandmarks()
-        .withFaceDescriptor()
+        const detection = await faceapi
+            .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
+            .withFaceLandmarks()
+            .withFaceDescriptor()
 
-    return detection ? detection.descriptor : null
+        return detection ? detection.descriptor : null
+    } catch (err) {
+        console.error('Error computing reference descriptor:', err)
+        return null
+    }
 }
 
 const startCamera = async () => {
@@ -196,8 +205,11 @@ const capturePhoto = () => {
     return canvas.toDataURL('image/jpeg', 0.85)
 }
 
+
+
 const simpanAbsensi = async (photoDataUrl) => {
-    const response = await window.axios.post(route('pegawai.absensi.simpan'), {
+    const routeName = props.isCheckOut ? 'pegawai.absensi.pulang' : 'pegawai.absensi.simpan'
+    const response = await window.axios.post(route(routeName), {
         latitude: props.deviceLocation.latitude,
         longitude: props.deviceLocation.longitude,
         method: 'face',

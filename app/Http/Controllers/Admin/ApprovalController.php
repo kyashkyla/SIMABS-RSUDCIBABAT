@@ -10,6 +10,7 @@ use App\Notifications\AttendanceRequestDecidedNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
+use Illuminate\Support\Str;
 
 class ApprovalController extends Controller
 {
@@ -54,32 +55,22 @@ class ApprovalController extends Controller
             'admin_note' => 'nullable|string|max:1000',
         ]);
 
+        $otpCode = strtoupper(Str::random(6));
+
         $persetujuan_absensi->update([
             'status' => 'approved',
             'approval_type' => $validated['approval_type'],
+            'otp_code' => $otpCode,
             'admin_note' => $validated['admin_note'] ?? null,
             'decided_by' => Auth::id(),
             'decided_at' => now(),
         ]);
 
-        // Catat sebagai absensi hari ini dengan metode alternatif
-        Attendance::updateOrCreate(
-            [
-                'employee_id' => $persetujuan_absensi->employee_id,
-                'attendance_date' => now()->toDateString(),
-            ],
-            [
-                'check_in_method' => 'alternative',
-                'status' => 'alternatif',
-                'check_in_at' => now(),
-            ]
-        );
-
         $this->notifyEmployee($persetujuan_absensi);
 
         return redirect()
             ->route('admin.approvals.index')
-            ->with('success', 'Pengajuan absensi alternatif disetujui.');
+            ->with('success', 'Pengajuan absensi alternatif disetujui. OTP: ' . $otpCode);
     }
 
     /**
@@ -140,6 +131,7 @@ class ApprovalController extends Controller
                 default => 'Menunggu',
             },
             'type' => $r->approval_type ? ucfirst($r->approval_type) : null,
+            'otp_code' => $r->otp_code,
         ];
 
         if ($detail) {

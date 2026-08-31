@@ -24,8 +24,9 @@ class ShiftSchedule
     public static function all(): array
     {
         $shifts = [];
+        $shiftNames = ['Pagi', 'Siang', 'Malam'];
 
-        foreach (array_keys(config('attendance.shift_start', [])) as $name) {
+        foreach ($shiftNames as $name) {
             $shifts[$name] = self::definition($name);
         }
 
@@ -42,32 +43,44 @@ class ShiftSchedule
      */
     public static function definition(?string $shiftName): array
     {
-        $start = config("attendance.shift_start.{$shiftName}");
+        $shiftNameLower = strtolower($shiftName);
+        $start = \App\Models\Setting::get("work_start_{$shiftNameLower}");
 
-        // Shift tidak dikenali / kosong -> fallback aman ke jam kantor umum
-        // supaya sistem tidak error, tapi ini seharusnya tidak pernah terjadi
-        // karena kolom shift wajib diisi salah satu dari Pagi/Siang/Malam.
         if (!$start) {
-            $start = '07:00';
+            // Fallbacks if not set in DB
+            $fallbacks = [
+                'pagi' => '07:00',
+                'siang' => '15:00',
+                'malam' => '23:00'
+            ];
+            $start = $fallbacks[$shiftNameLower] ?? '07:00';
         }
 
-        $durationHours = (int) config('attendance.shift_duration_hours', 8);
+        // We assume end time is also configurable per shift as per admin request
+        $end = \App\Models\Setting::get("work_end_{$shiftNameLower}");
+        if (!$end) {
+            $endFallbacks = [
+                'pagi' => '15:00',
+                'siang' => '23:00',
+                'malam' => '07:00'
+            ];
+            $end = $endFallbacks[$shiftNameLower] ?? '15:00';
+        }
+
         $checkInMinutes = (int) config('attendance.check_in_window_minutes', 30);
         $checkOutMinutes = (int) config('attendance.check_out_window_minutes', 30);
-        $lateAfterMinutes = (int) config('attendance.late_after_minutes', 15);
+        $lateAfterMinutes = (int) \App\Models\Setting::get('late_tolerance_minutes', 15);
 
         $startTime = Carbon::parse($start);
-        $endTime = $startTime->copy()->addHours($durationHours);
+        $endTime = Carbon::parse($end);
 
-        // Shift dianggap "melewati tengah malam" kalau jam selesainya lebih
-        // kecil/sama dari jam mulainya (mis. mulai 23:00 -> selesai 07:00).
+        // Jika waktu akhir lebih kecil atau sama dengan waktu mulai, berarti lewat tengah malam
         $overnight = $endTime->format('H:i') <= $startTime->format('H:i');
 
         return [
             'name' => $shiftName,
             'start' => $startTime->format('H:i'),
             'end' => $endTime->format('H:i'),
-            'duration_hours' => $durationHours,
             'overnight' => $overnight,
             'check_in' => [
                 'start' => $startTime->format('H:i'),

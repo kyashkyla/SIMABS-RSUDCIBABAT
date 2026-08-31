@@ -16,9 +16,11 @@ class NotificationController extends Controller
         $notification = $request->user()->notifications()->findOrFail($id);
         $notification->markAsRead();
 
-        $url = $notification->data['url'] ?? route('admin.dashboard');
+        if (isset($notification->data['url'])) {
+            return redirect($notification->data['url']);
+        }
 
-        return redirect($url);
+        return back();
     }
 
     /**

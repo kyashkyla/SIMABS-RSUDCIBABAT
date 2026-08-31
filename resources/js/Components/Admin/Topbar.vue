@@ -47,12 +47,12 @@ const closeMenus = (event) => {
 }
 
 const openNotification = (notif) => {
-    router.put(route('admin.notifications.read', notif.id))
+    router.put(route('notifications.read', notif.id))
     showNotifMenu.value = false
 }
 
 const markAllRead = () => {
-    router.put(route('admin.notifications.read-all'), {}, { preserveScroll: true })
+    router.put(route('notifications.read-all'), {}, { preserveScroll: true })
 }
 
 onMounted(() => {

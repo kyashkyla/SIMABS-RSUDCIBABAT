@@ -1,10 +1,11 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { router } from '@inertiajs/vue3'
 
 import {
     KeyIcon,
     CheckCircleIcon,
-    ArrowLeftIcon,
+    PaperAirplaneIcon,
 } from '@heroicons/vue/24/outline'
 
 const props = defineProps({
@@ -12,23 +13,103 @@ const props = defineProps({
         type: String,
         default: 'temporary',
     },
+    deviceLocation: {
+        type: Object,
+        required: true,
+    },
+    isCheckOut: {
+        type: Boolean,
+        default: false,
+    },
 })
 
 const emit = defineEmits(['success'])
 
 const otp = ref('')
+const isLoadingOtp = ref(false)
+const timer = ref(0)
+let interval = null
+let notifInterval = null
 
-const verifikasiOtp = () => {
+const formattedTimer = computed(() => {
+    const minutes = Math.floor(timer.value / 60)
+    const seconds = timer.value % 60
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`
+})
 
-    if (otp.value.length !== 6) {
+const requestOtp = async () => {
+    if (isLoadingOtp.value) return
+    isLoadingOtp.value = true
+    
+    try {
+        await window.axios.post(route('pegawai.absensi.otp.request'))
+        alert('Kode OTP telah dikirimkan ke notifikasi Anda.')
+        startTimer()
+    } catch (err) {
+        console.error(err)
+        alert(err.response?.data?.message || 'Gagal meminta OTP.')
+    } finally {
+        isLoadingOtp.value = false
+    }
+}
+
+const startTimer = () => {
+    timer.value = 180 // 3 minutes
+    if (interval) clearInterval(interval)
+    if (notifInterval) clearInterval(notifInterval)
+    
+    interval = setInterval(() => {
+        if (timer.value > 0) {
+            timer.value--
+        } else {
+            clearInterval(interval)
+            if (notifInterval) clearInterval(notifInterval)
+        }
+    }, 1000)
+
+    // Reload notifications every 3 seconds
+    notifInterval = setInterval(() => {
+        if (timer.value > 0) {
+            router.reload({
+                only: ['notifications'],
+                preserveState: true,
+                preserveScroll: true
+            })
+        }
+    }, 3000)
+}
+
+onMounted(() => {
+    // Optionally trigger automatically on mount:
+    // requestOtp()
+})
+
+onUnmounted(() => {
+    if (interval) clearInterval(interval)
+    if (notifInterval) clearInterval(notifInterval)
+})
+
+const verifikasiOtp = async () => {
+    if (otp.value.length !== 6 || timer.value === 0) {
         return
     }
 
-    emit('success')
+    try {
+        const routeName = props.isCheckOut ? 'pegawai.absensi.pulang' : 'pegawai.absensi.simpan'
+        const response = await window.axios.post(route(routeName), {
+            latitude: props.deviceLocation.latitude,
+            longitude: props.deviceLocation.longitude,
+            method: 'otp',
+            otp_code: otp.value,
+        })
+        emit('success', response.data.attendance)
+    } catch (err) {
+        console.error(err)
+        alert(err.response?.data?.message || 'Verifikasi OTP gagal.')
+    }
 }
 
 const handleOtpInput = (event) => {
-
     otp.value = event.target.value
         .replace(/[^a-zA-Z0-9]/g, '')
         .toUpperCase()
@@ -114,35 +195,43 @@ const handleOtpInput = (event) => {
 
         <!-- OTP -->
 
-        <div class="otp-input">
+        <div v-if="timer > 0">
+            <div class="otp-input">
+                <input
+                    :value="otp"
+                    maxlength="6"
+                    autocomplete="one-time-code"
+                    placeholder="A7K29P"
+                    @input="handleOtpInput"
+                    :disabled="timer === 0"
+                />
+            </div>
 
-            <input
-                :value="otp"
-                maxlength="6"
-                autocomplete="one-time-code"
-                placeholder="A7K29P"
-                @input="handleOtpInput"
-            />
+            <p class="otp-hint">
+                Masukkan 6 karakter berupa huruf dan angka. Sisa waktu: <strong>{{ formattedTimer }}</strong>
+            </p>
 
+            <button
+                class="primary-button"
+                @click="verifikasiOtp"
+                :disabled="otp.length !== 6 || timer === 0"
+            >
+                <KeyIcon />
+                Verifikasi OTP
+            </button>
         </div>
-
-
-        <p class="otp-hint">
-            Masukkan 6 karakter berupa huruf dan angka.
-        </p>
-
-
-        <button
-            class="primary-button"
-            @click="verifikasiOtp"
-            :disabled="otp.length !== 6"
-        >
-
-            <KeyIcon />
-
-            Verifikasi OTP
-
-        </button>
+        
+        <div v-else>
+            <button
+                class="primary-button"
+                style="background: #1e3a8a; margin-top: 20px;"
+                @click="requestOtp"
+                :disabled="isLoadingOtp"
+            >
+                <PaperAirplaneIcon />
+                {{ otp.length > 0 ? 'Kirim Ulang OTP' : 'Minta Kode OTP' }}
+            </button>
+        </div>
 
     </div>
 

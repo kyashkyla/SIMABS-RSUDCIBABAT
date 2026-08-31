@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { Head, router } from '@inertiajs/vue3'
 
 import PegawaiLayout from './PegawaiLayout.vue'
@@ -20,6 +20,14 @@ const props = defineProps({
         type: Object,
         default: null,
     },
+    approvalStatus: {
+        type: String,
+        default: 'none',
+    },
+})
+
+const isCheckOut = computed(() => {
+    return props.todayAttendance && props.todayAttendance.check_in_at && !props.todayAttendance.check_out_at
 })
 
 const step = ref('location')
@@ -40,7 +48,7 @@ const deviceLocation = ref(null)
 |
 */
 
-const approvalStatus = ref('none')
+const approvalStatus = ref(props.approvalStatus)
 
 /*
 |--------------------------------------------------------------------------
@@ -74,6 +82,8 @@ const locationConfirmed = (location) => {
         approvalStatus.value === 'permanent'
     ) {
         step.value = 'otp'
+    } else if (approvalStatus.value === 'pending') {
+        step.value = 'waiting'
     } else {
         step.value = 'face'
     }
@@ -180,6 +190,7 @@ const finishAttendance = () => {
                 v-else-if="step === 'face'"
                 :employee="props.employee"
                 :device-location="deviceLocation"
+                :is-check-out="isCheckOut"
                 @success="faceSuccess"
                 @failed="faceFailed"
             />
@@ -212,6 +223,8 @@ const finishAttendance = () => {
             <OtpAttendance
                 v-else-if="step === 'otp'"
                 :approval-type="approvalStatus"
+                :device-location="deviceLocation"
+                :is-check-out="isCheckOut"
                 @success="otpSuccess"
             />
 

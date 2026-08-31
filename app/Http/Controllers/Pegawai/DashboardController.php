@@ -31,6 +31,7 @@ class DashboardController extends Controller
             'employee' => [
                 ...$employee->toArray(),
                 'photo_url' => $employee->photo ? Storage::url($employee->photo) : null,
+                'shift_details' => $employee->shiftDefinition(),
             ],
             'todayAttendance' => $this->formatTodayAttendance($employee),
             'monthlySummary' => $this->buildMonthlySummary($employee, $today),
@@ -52,6 +53,7 @@ class DashboardController extends Controller
 
         return [
             'check_in_at' => $attendance->check_in_at?->format('H:i'),
+            'check_out_at' => $attendance->check_out_at?->format('H:i'),
             'status' => $attendance->status,
             'method' => $attendance->check_in_method,
         ];

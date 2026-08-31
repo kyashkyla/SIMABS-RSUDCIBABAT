@@ -18,8 +18,15 @@ class SettingController extends Controller
     {
         return Inertia::render('Auth/Admin/Setting/Index', [
             'jamKerja' => [
-                'workStart' => Setting::get('work_start', '07:00'),
-                'workEnd' => Setting::get('work_end', '15:00'),
+                'workStartPagi' => Setting::get('work_start_pagi', '07:00'),
+                'workEndPagi' => Setting::get('work_end_pagi', '15:00'),
+                
+                'workStartSiang' => Setting::get('work_start_siang', '15:00'),
+                'workEndSiang' => Setting::get('work_end_siang', '23:00'),
+                
+                'workStartMalam' => Setting::get('work_start_malam', '23:00'),
+                'workEndMalam' => Setting::get('work_end_malam', '07:00'),
+                
                 'lateTolerance' => Setting::get('late_tolerance_minutes', '15'),
             ],
             'notifikasi' => [
@@ -35,13 +42,24 @@ class SettingController extends Controller
     public function updateJamKerja(Request $request)
     {
         $validated = $request->validate([
-            'work_start' => 'required|date_format:H:i',
-            'work_end' => 'required|date_format:H:i|after:work_start',
+            'work_start_pagi' => 'required|date_format:H:i',
+            'work_end_pagi' => 'required|date_format:H:i',
+            'work_start_siang' => 'required|date_format:H:i',
+            'work_end_siang' => 'required|date_format:H:i',
+            'work_start_malam' => 'required|date_format:H:i',
+            'work_end_malam' => 'required|date_format:H:i',
             'late_tolerance' => 'required|integer|min:0|max:120',
         ]);
 
-        Setting::set('work_start', $validated['work_start'], 'Jam Masuk', 'jam_kerja');
-        Setting::set('work_end', $validated['work_end'], 'Jam Pulang', 'jam_kerja');
+        Setting::set('work_start_pagi', $validated['work_start_pagi'], 'Jam Masuk Pagi', 'jam_kerja');
+        Setting::set('work_end_pagi', $validated['work_end_pagi'], 'Jam Pulang Pagi', 'jam_kerja');
+
+        Setting::set('work_start_siang', $validated['work_start_siang'], 'Jam Masuk Siang', 'jam_kerja');
+        Setting::set('work_end_siang', $validated['work_end_siang'], 'Jam Pulang Siang', 'jam_kerja');
+
+        Setting::set('work_start_malam', $validated['work_start_malam'], 'Jam Masuk Malam', 'jam_kerja');
+        Setting::set('work_end_malam', $validated['work_end_malam'], 'Jam Pulang Malam', 'jam_kerja');
+
         Setting::set('late_tolerance_minutes', $validated['late_tolerance'], 'Toleransi Keterlambatan (menit)', 'jam_kerja');
 
         return back()->with('success', 'Pengaturan jam kerja berhasil disimpan.');

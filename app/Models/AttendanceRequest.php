@@ -14,6 +14,7 @@ class AttendanceRequest extends Model
         'id_card_photo',
         'status',
         'approval_type',
+        'otp_code',
         'admin_note',
         'decided_by',
         'decided_at',

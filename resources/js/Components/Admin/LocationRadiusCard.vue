@@ -1,6 +1,7 @@
 <script setup>
 import { reactive, ref } from 'vue'
 import { router } from '@inertiajs/vue3'
+import LocationMapPicker from './LocationMapPicker.vue'
 import {
     MapPinIcon,
     ChevronDownIcon,
@@ -241,6 +242,14 @@ const destroyLocation = () => {
 
                 </p>
 
+            </div>
+
+            <div class="mb-5">
+                <LocationMapPicker 
+                    v-model:latitude="form.latitude"
+                    v-model:longitude="form.longitude"
+                    :radius="form.radius_meters"
+                />
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
