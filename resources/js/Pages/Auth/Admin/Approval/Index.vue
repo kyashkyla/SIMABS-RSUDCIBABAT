@@ -1,37 +1,22 @@
 <script setup>
 import { Head, Link } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
+import { ref, computed } from 'vue'
 
-const approvals = [
-    {
-        id: 1,
-        name: 'Budi Santoso',
-        nip: '0283973982',
-        department: 'Radiologi',
-        reason: 'Face ID tidak dapat digunakan',
-        date: '13 Agustus 2026',
-        status: 'Menunggu',
+const props = defineProps({
+    approvals: { type: Array, default: () => [] },
+    stats: {
+        type: Object,
+        default: () => ({ pending: 0, approved_active: 0, rejected: 0 }),
     },
-    {
-        id: 2,
-        name: 'Maya Kusuma',
-        nip: '1987654321',
-        department: 'IGD',
-        reason: 'Kamera perangkat mengalami kerusakan',
-        date: '13 Agustus 2026',
-        status: 'Menunggu',
-    },
-    {
-        id: 3,
-        name: 'Rizky Saputra',
-        nip: '1987654322',
-        department: 'Farmasi',
-        reason: 'Kendala Face ID',
-        date: '12 Agustus 2026',
-        status: 'Disetujui',
-        type: 'Sementara',
-    },
-]
+})
+
+const statusFilter = ref('Semua Status')
+
+const filteredApprovals = computed(() => {
+    if (statusFilter.value === 'Semua Status') return props.approvals
+    return props.approvals.filter((a) => a.status === statusFilter.value)
+})
 </script>
 
 <template>
@@ -67,7 +52,7 @@ const approvals = [
                             </p>
 
                             <h2 class="text-3xl font-bold text-slate-800 mt-2">
-                                2
+                                {{ stats.pending }}
                             </h2>
                         </div>
 
@@ -91,7 +76,7 @@ const approvals = [
                             </p>
 
                             <h2 class="text-3xl font-bold text-slate-800 mt-2">
-                                1
+                                {{ stats.approved_active }}
                             </h2>
                         </div>
 
@@ -111,17 +96,17 @@ const approvals = [
 
                         <div>
                             <p class="text-sm text-slate-500">
-                                Approval Permanen
+                                Ditolak
                             </p>
 
                             <h2 class="text-3xl font-bold text-slate-800 mt-2">
-                                0
+                                {{ stats.rejected }}
                             </h2>
                         </div>
 
                         <div
-                            class="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600 text-xl">
-                            ✓
+                            class="w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center text-red-600 text-xl">
+                            ✕
                         </div>
 
                     </div>
@@ -150,6 +135,7 @@ const approvals = [
 
                         <!-- FILTER -->
                         <select
+                            v-model="statusFilter"
                             class="border border-slate-300 rounded-xl px-4 py-2.5 text-sm
                                    focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
 
@@ -204,7 +190,7 @@ const approvals = [
                         <tbody>
 
                             <tr
-                                v-for="approval in approvals"
+                                v-for="approval in filteredApprovals"
                                 :key="approval.id"
                                 class="border-t border-slate-100 hover:bg-slate-50 transition">
 

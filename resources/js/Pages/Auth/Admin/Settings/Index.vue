@@ -23,15 +23,23 @@ const successMessage = computed(() => page.props.flash?.success)
 
         <!-- ================= HEADER ================= -->
 
-        <div class="mb-8">
+        <div class="mb-8 flex items-center justify-between">
 
-            <h1 class="text-3xl font-bold text-slate-800">
-                Pengaturan
-            </h1>
+            <div>
+                <h1 class="text-3xl font-bold text-slate-800">
+                    Pengaturan
+                </h1>
 
-            <p class="text-slate-500 mt-1">
-                Atur lokasi & radius presensi pegawai di sini.
-            </p>
+                <p class="text-slate-500 mt-1">
+                    Atur lokasi & radius presensi pegawai di sini.
+                </p>
+            </div>
+
+            <a
+                :href="route('admin.settings.edit')"
+                class="text-sm text-emerald-600 hover:text-emerald-800 font-medium whitespace-nowrap">
+                Jam Kerja, Notifikasi & Password &rarr;
+            </a>
 
         </div>
 

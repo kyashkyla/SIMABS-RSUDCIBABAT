@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Pegawai;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class DashboardController extends Controller
@@ -22,7 +23,15 @@ class DashboardController extends Controller
 
         return Inertia::render('Auth/pegawai/Dashboard', [
             'user' => $user,
-            'employee' => $employee,
+            // `photo_url` ditambahkan di sini (bukan cuma mengirim kolom
+            // `photo` mentah) supaya kartu profil di dashboard bisa
+            // langsung menampilkan foto asli pegawai, sama seperti foto
+            // di pojok kanan atas (avatar header) yang sudah lebih dulu
+            // pakai photo_url lewat HandleInertiaRequests.
+            'employee' => [
+                ...$employee->toArray(),
+                'photo_url' => $employee->photo ? Storage::url($employee->photo) : null,
+            ],
             'todayAttendance' => $this->formatTodayAttendance($employee),
             'monthlySummary' => $this->buildMonthlySummary($employee, $today),
             'recentActivities' => $this->buildRecentActivities($employee),
@@ -56,8 +65,6 @@ class DashboardController extends Controller
      */
     private function buildMonthlySummary($employee, Carbon $today): array
     {
-        $monthStart = $today->copy()->startOfMonth();
-
         $attendances = $employee->attendances()
             ->whereYear('attendance_date', $today->year)
             ->whereMonth('attendance_date', $today->month)

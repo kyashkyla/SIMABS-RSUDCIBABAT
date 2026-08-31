@@ -1,5 +1,6 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { Link, usePage, router } from '@inertiajs/vue3'
 
 import {
     BellIcon,
@@ -7,7 +8,13 @@ import {
     UserCircleIcon,
 } from '@heroicons/vue/24/outline'
 
+const page = usePage()
+
+const authUser = computed(() => page.props.auth?.user)
+const notifications = computed(() => page.props.notifications ?? { unreadCount: 0, latest: [] })
+
 const showProfileMenu = ref(false)
+const showNotifMenu = ref(false)
 
 const today = ref('')
 
@@ -22,21 +29,39 @@ const updateDate = () => {
 
 const toggleProfile = () => {
     showProfileMenu.value = !showProfileMenu.value
+    showNotifMenu.value = false
 }
 
-const closeProfile = (event) => {
+const toggleNotif = () => {
+    showNotifMenu.value = !showNotifMenu.value
+    showProfileMenu.value = false
+}
+
+const closeMenus = (event) => {
     if (!event.target.closest('.profile-menu')) {
         showProfileMenu.value = false
     }
+    if (!event.target.closest('.notif-menu')) {
+        showNotifMenu.value = false
+    }
+}
+
+const openNotification = (notif) => {
+    router.put(route('admin.notifications.read', notif.id))
+    showNotifMenu.value = false
+}
+
+const markAllRead = () => {
+    router.put(route('admin.notifications.read-all'), {}, { preserveScroll: true })
 }
 
 onMounted(() => {
     updateDate()
-    document.addEventListener('click', closeProfile)
+    document.addEventListener('click', closeMenus)
 })
 
 onUnmounted(() => {
-    document.removeEventListener('click', closeProfile)
+    document.removeEventListener('click', closeMenus)
 })
 </script>
 
@@ -68,28 +93,101 @@ onUnmounted(() => {
 
                 <!-- Notifikasi -->
 
-                <button
-                    type="button"
-                    class="relative w-11 h-11 rounded-full
-                           hover:bg-slate-100
-                           flex items-center justify-center
-                           transition">
+                <div class="relative notif-menu">
 
-                    <BellIcon
-                        class="w-6 h-6 text-slate-600"
-                    />
+                    <button
+                        type="button"
+                        @click.stop="toggleNotif"
+                        class="relative w-11 h-11 rounded-full
+                               hover:bg-slate-100
+                               flex items-center justify-center
+                               transition">
 
-                    <!-- Notification Dot -->
+                        <BellIcon
+                            class="w-6 h-6 text-slate-600"
+                        />
 
-                    <span
-                        class="absolute top-2 right-2
-                               w-2.5 h-2.5
-                               bg-red-500
-                               rounded-full
-                               border-2 border-white">
-                    </span>
+                        <!-- Notification Dot -->
 
-                </button>
+                        <span
+                            v-if="notifications.unreadCount > 0"
+                            class="absolute top-2 right-2
+                                   w-2.5 h-2.5
+                                   bg-red-500
+                                   rounded-full
+                                   border-2 border-white">
+                        </span>
+
+                    </button>
+
+                    <!-- ================= DROPDOWN NOTIFIKASI ================= -->
+
+                    <div
+                        v-if="showNotifMenu"
+                        class="absolute right-0 top-14
+                               w-80
+                               bg-white
+                               rounded-xl
+                               shadow-xl
+                               border border-slate-100
+                               z-50">
+
+                        <div class="flex items-center justify-between px-4 py-3 border-b">
+
+                            <p class="text-sm font-semibold text-slate-700">
+                                Notifikasi
+                            </p>
+
+                            <button
+                                v-if="notifications.unreadCount > 0"
+                                type="button"
+                                @click="markAllRead"
+                                class="text-xs text-emerald-600 hover:text-emerald-800 font-medium">
+                                Tandai semua dibaca
+                            </button>
+
+                        </div>
+
+                        <div class="max-h-80 overflow-y-auto">
+
+                            <p
+                                v-if="!notifications.latest || notifications.latest.length === 0"
+                                class="px-4 py-6 text-sm text-slate-400 text-center">
+                                Belum ada notifikasi.
+                            </p>
+
+                            <button
+                                v-for="notif in notifications.latest"
+                                :key="notif.id"
+                                type="button"
+                                @click="openNotification(notif)"
+                                class="w-full text-left px-4 py-3 border-b last:border-b-0 hover:bg-slate-50 transition flex gap-3"
+                                :class="!notif.read && 'bg-emerald-50/50'">
+
+                                <span
+                                    class="mt-1.5 w-2 h-2 rounded-full flex-shrink-0"
+                                    :class="notif.read ? 'bg-slate-200' : 'bg-emerald-500'">
+                                </span>
+
+                                <div class="min-w-0">
+                                    <p class="text-sm font-medium text-slate-700 truncate">
+                                        {{ notif.title }}
+                                    </p>
+                                    <p class="text-xs text-slate-500 mt-0.5 line-clamp-2">
+                                        {{ notif.message }}
+                                    </p>
+                                    <p class="text-xs text-slate-400 mt-1">
+                                        {{ notif.time }}
+                                    </p>
+                                </div>
+
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </div>
 
 
                 <!-- Garis Pemisah -->
@@ -132,11 +230,11 @@ onUnmounted(() => {
                         <div class="text-left hidden sm:block">
 
                             <p class="text-sm font-semibold text-slate-700">
-                                Administrator
+                                {{ authUser?.name ?? 'Administrator' }}
                             </p>
 
                             <p class="text-xs text-slate-400">
-                                Super Admin
+                                {{ authUser?.role === 'admin' ? 'Admin Sistem' : authUser?.role }}
                             </p>
 
                         </div>
@@ -171,11 +269,11 @@ onUnmounted(() => {
                         <div class="px-4 py-3 border-b">
 
                             <p class="text-sm font-semibold text-slate-700">
-                                Administrator
+                                {{ authUser?.name ?? 'Administrator' }}
                             </p>
 
                             <p class="text-xs text-slate-400">
-                                Admin Sistem
+                                {{ authUser?.email }}
                             </p>
 
                         </div>
@@ -197,16 +295,18 @@ onUnmounted(() => {
                         </div>
 
 
-                        <a
-                            href="/admin/logout"
-                            class="block px-4 py-3
+                        <Link
+                            href="/logout"
+                            method="post"
+                            as="button"
+                            class="block w-full text-left px-4 py-3
                                    text-sm text-red-500
                                    hover:bg-red-50
                                    transition">
 
                             Keluar
 
-                        </a>
+                        </Link>
 
                     </div>
 

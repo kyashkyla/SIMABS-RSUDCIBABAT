@@ -1,23 +1,38 @@
 <script setup>
-import { Head, Link } from '@inertiajs/vue3'
-import { ref } from 'vue'
+import { Head, Link, useForm } from '@inertiajs/vue3'
+import { computed } from 'vue'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 
-const approvalType = ref('temporary')
-const startDate = ref('2026-08-13')
-const endDate = ref('2026-08-20')
-const adminNote = ref('')
+const props = defineProps({
+    approval: { type: Object, required: true },
+})
+
+const approveForm = useForm({
+    approval_type: 'sementara',
+    admin_note: '',
+})
+
+const rejectForm = useForm({
+    admin_note: '',
+})
+
+const isPending = computed(() => props.approval.status === 'Menunggu')
 
 const approve = () => {
-    alert(
-        approvalType.value === 'temporary'
-            ? 'Pengajuan disetujui sebagai Approval Sementara.'
-            : 'Pengajuan disetujui sebagai Approval Permanen.'
-    )
+    if (!confirm('Setujui pengajuan absensi alternatif ini?')) return
+
+    approveForm.put(route('admin.approvals.approve', props.approval.id))
 }
 
 const reject = () => {
-    alert('Pengajuan ditolak.')
+    rejectForm.admin_note = approveForm.admin_note
+
+    if (!rejectForm.admin_note) {
+        alert('Isi alasan penolakan pada kolom Catatan Admin terlebih dahulu.')
+        return
+    }
+
+    rejectForm.put(route('admin.approvals.reject', props.approval.id))
 }
 </script>
 
@@ -61,6 +76,7 @@ const reject = () => {
             <!-- STATUS -->
 
             <div
+                v-if="isPending"
                 class="bg-yellow-50 border border-yellow-200 rounded-2xl p-5
                        flex items-center justify-between">
 
@@ -98,6 +114,24 @@ const reject = () => {
 
             </div>
 
+            <div
+                v-else
+                class="rounded-2xl p-5 flex items-center justify-between border"
+                :class="approval.status === 'Disetujui'
+                    ? 'bg-emerald-50 border-emerald-200'
+                    : 'bg-red-50 border-red-200'">
+
+                <div>
+                    <p class="font-semibold" :class="approval.status === 'Disetujui' ? 'text-emerald-800' : 'text-red-800'">
+                        Pengajuan {{ approval.status }}{{ approval.type ? ' • ' + approval.type : '' }}
+                    </p>
+                    <p class="text-sm mt-1" :class="approval.status === 'Disetujui' ? 'text-emerald-700' : 'text-red-700'">
+                        {{ approval.admin_note || 'Tidak ada catatan tambahan.' }}
+                    </p>
+                </div>
+
+            </div>
+
 
             <!-- DATA PEGAWAI -->
 
@@ -120,7 +154,7 @@ const reject = () => {
                         </p>
 
                         <p class="font-semibold text-slate-800 mt-1">
-                            Budi Santoso
+                            {{ approval.name }}
                         </p>
 
                     </div>
@@ -132,7 +166,7 @@ const reject = () => {
                         </p>
 
                         <p class="font-semibold text-slate-800 mt-1">
-                            0283973982
+                            {{ approval.nip }}
                         </p>
 
                     </div>
@@ -144,7 +178,7 @@ const reject = () => {
                         </p>
 
                         <p class="font-semibold text-slate-800 mt-1">
-                            Radiologi
+                            {{ approval.department }}
                         </p>
 
                     </div>
@@ -156,7 +190,7 @@ const reject = () => {
                         </p>
 
                         <p class="font-semibold text-slate-800 mt-1">
-                            Dokter
+                            {{ approval.position }}
                         </p>
 
                     </div>
@@ -168,7 +202,7 @@ const reject = () => {
                         </p>
 
                         <p class="font-semibold text-slate-800 mt-1">
-                            Pagi
+                            {{ approval.shift }}
                         </p>
 
                     </div>
@@ -213,8 +247,7 @@ const reject = () => {
                         <div
                             class="bg-slate-50 rounded-xl p-4 text-slate-700">
 
-                            Face ID tidak dapat digunakan karena kamera
-                            perangkat mengalami kerusakan.
+                            {{ approval.reason }}
 
                         </div>
 
@@ -244,7 +277,7 @@ const reject = () => {
                         </p>
 
                         <p class="text-slate-700">
-                            13 Agustus 2026
+                            {{ approval.date }}
                         </p>
 
                     </div>
@@ -285,29 +318,38 @@ const reject = () => {
                                    border border-slate-200 overflow-hidden
                                    flex items-center justify-center">
 
-                            <div class="text-center text-slate-400">
+                            <img
+                                v-if="approval.selfie_photo"
+                                :src="approval.selfie_photo"
+                                alt="Foto selfie pegawai"
+                                class="w-full h-full object-cover">
+
+                            <div v-else class="text-center text-slate-400">
 
                                 <div class="text-5xl mb-3">
                                     📸
                                 </div>
 
                                 <p class="text-sm">
-                                    Foto selfie pegawai
+                                    Belum ada foto selfie
                                 </p>
 
                             </div>
 
                         </div>
 
-                        <button
-                            class="mt-3 w-full py-2.5 rounded-xl
+                        <a
+                            v-if="approval.selfie_photo"
+                            :href="approval.selfie_photo"
+                            target="_blank"
+                            class="mt-3 block text-center w-full py-2.5 rounded-xl
                                    border border-slate-200
                                    text-slate-600 text-sm font-medium
                                    hover:bg-slate-50 transition">
 
                             Lihat Foto Selfie
 
-                        </button>
+                        </a>
 
                     </div>
 
@@ -325,29 +367,38 @@ const reject = () => {
                                    border border-slate-200 overflow-hidden
                                    flex items-center justify-center">
 
-                            <div class="text-center text-slate-400">
+                            <img
+                                v-if="approval.id_card_photo"
+                                :src="approval.id_card_photo"
+                                alt="Foto ID Card pegawai"
+                                class="w-full h-full object-cover">
+
+                            <div v-else class="text-center text-slate-400">
 
                                 <div class="text-5xl mb-3">
                                     🪪
                                 </div>
 
                                 <p class="text-sm">
-                                    Foto ID Card pegawai
+                                    Belum ada foto ID Card
                                 </p>
 
                             </div>
 
                         </div>
 
-                        <button
-                            class="mt-3 w-full py-2.5 rounded-xl
+                        <a
+                            v-if="approval.id_card_photo"
+                            :href="approval.id_card_photo"
+                            target="_blank"
+                            class="mt-3 block text-center w-full py-2.5 rounded-xl
                                    border border-slate-200
                                    text-slate-600 text-sm font-medium
                                    hover:bg-slate-50 transition">
 
                             Lihat Foto ID Card
 
-                        </button>
+                        </a>
 
                     </div>
 
@@ -358,7 +409,7 @@ const reject = () => {
 
             <!-- KEPUTUSAN ADMIN -->
 
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-100">
+            <div v-if="isPending" class="bg-white rounded-2xl shadow-sm border border-slate-100">
 
                 <div class="p-6 border-b border-slate-100">
 
@@ -390,9 +441,9 @@ const reject = () => {
                                 class="relative cursor-pointer">
 
                                 <input
-                                    v-model="approvalType"
+                                    v-model="approveForm.approval_type"
                                     type="radio"
-                                    value="temporary"
+                                    value="sementara"
                                     class="peer sr-only">
 
                                 <div
@@ -440,9 +491,9 @@ const reject = () => {
                                 class="relative cursor-pointer">
 
                                 <input
-                                    v-model="approvalType"
+                                    v-model="approveForm.approval_type"
                                     type="radio"
-                                    value="permanent"
+                                    value="permanen"
                                     class="peer sr-only">
 
                                 <div
@@ -491,7 +542,7 @@ const reject = () => {
                     <!-- TANGGAL -->
 
                     <div
-                        v-if="approvalType === 'temporary'"
+                        v-if="approveForm.approval_type === 'sementara'"
                         class="grid grid-cols-1 md:grid-cols-2 gap-5">
 
                         <div>
@@ -501,7 +552,7 @@ const reject = () => {
                             </label>
 
                             <input
-                                v-model="startDate"
+                                v-model="approveForm.start_date"
                                 type="date"
                                 class="mt-2 w-full rounded-xl
                                        border border-slate-300 px-4 py-3
@@ -517,7 +568,7 @@ const reject = () => {
                             </label>
 
                             <input
-                                v-model="endDate"
+                                v-model="approveForm.end_date"
                                 type="date"
                                 class="mt-2 w-full rounded-xl
                                        border border-slate-300 px-4 py-3
@@ -532,7 +583,7 @@ const reject = () => {
                     <!-- INFO PERMANEN -->
 
                     <div
-                        v-if="approvalType === 'permanent'"
+                        v-if="approveForm.approval_type === 'permanen'"
                         class="bg-emerald-50 border border-emerald-200
                                rounded-xl p-4">
 
@@ -569,7 +620,7 @@ const reject = () => {
                         </label>
 
                         <textarea
-                            v-model="adminNote"
+                            v-model="approveForm.admin_note"
                             rows="4"
                             placeholder="Tambahkan catatan atau alasan keputusan..."
                             class="mt-2 w-full rounded-xl border border-slate-300
@@ -600,14 +651,15 @@ const reject = () => {
 
                 </Link>
 
-                <div class="flex gap-3">
+                <div v-if="isPending" class="flex gap-3">
 
                     <button
                         @click="reject"
+                        :disabled="rejectForm.processing"
                         class="px-6 py-3 rounded-xl
                                border border-red-200
                                text-red-600 font-semibold
-                               hover:bg-red-50 transition">
+                               hover:bg-red-50 transition disabled:opacity-50">
 
                         Tolak Pengajuan
 
@@ -615,10 +667,11 @@ const reject = () => {
 
                     <button
                         @click="approve"
+                        :disabled="approveForm.processing"
                         class="px-6 py-3 rounded-xl
                                bg-emerald-600 text-white
                                font-semibold
-                               hover:bg-emerald-700 transition">
+                               hover:bg-emerald-700 transition disabled:opacity-50">
 
                         Setujui Pengajuan
 

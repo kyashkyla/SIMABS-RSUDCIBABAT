@@ -42,6 +42,33 @@ class HandleInertiaRequests extends Middleware
                         : null,
                 ] : null,
             ],
+            'flash' => [
+                'success' => fn () => $request->session()->get('success'),
+                'error' => fn () => $request->session()->get('error'),
+            ],
+            'notifications' => function () use ($request) {
+                $user = $request->user();
+
+                if (!$user || $user->role !== 'admin') {
+                    return null;
+                }
+
+                return [
+                    'unreadCount' => $user->unreadNotifications()->count(),
+                    'latest' => $user->notifications()
+                        ->latest()
+                        ->take(8)
+                        ->get()
+                        ->map(fn ($n) => [
+                            'id' => $n->id,
+                            'title' => $n->data['title'] ?? '',
+                            'message' => $n->data['message'] ?? '',
+                            'url' => $n->data['url'] ?? null,
+                            'read' => !is_null($n->read_at),
+                            'time' => $n->created_at->diffForHumans(),
+                        ]),
+                ];
+            },
         ];
     }
 }

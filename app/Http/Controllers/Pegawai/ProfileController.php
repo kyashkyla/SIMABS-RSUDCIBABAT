@@ -40,9 +40,14 @@ class ProfileController extends Controller
     }
 
     /**
-     * Update email & foto profil pegawai. Field lain (nama, NIP, jabatan,
-     * unit, dst) sengaja tidak bisa diubah dari sini karena hanya admin
-     * yang berhak mengubah data kepegawaian.
+     * Update email pegawai. Ini satu-satunya data profil yang boleh diubah
+     * sendiri oleh pegawai (selain password lewat halaman ganti password).
+     *
+     * Field lain (nama, NIP, jabatan, unit, foto profil/face ID, dst)
+     * sengaja tidak bisa diubah dari sini karena hanya admin yang berhak
+     * mengubah data kepegawaian. Foto profil dikelola admin lewat menu
+     * "Data Pegawai" supaya foto acuan face ID tidak bisa diganti sendiri
+     * oleh pegawai.
      */
     public function update(Request $request): RedirectResponse
     {
@@ -57,33 +62,17 @@ class ProfileController extends Controller
                 'max:255',
                 Rule::unique('users', 'email')->ignore($user->id),
             ],
-            'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
         ], [
             'email.required' => 'Email wajib diisi.',
             'email.email' => 'Format email tidak valid.',
             'email.unique' => 'Email sudah digunakan akun lain.',
-            'photo.image' => 'File harus berupa gambar.',
-            'photo.mimes' => 'Format foto harus JPG atau PNG.',
-            'photo.max' => 'Ukuran foto maksimal 2MB.',
         ]);
 
         // Samakan email di tabel users dan employees supaya konsisten
         $user->update(['email' => $validated['email']]);
 
-        $employeeData = ['email' => $validated['email']];
-
-        if ($request->hasFile('photo')) {
-            // Hapus foto lama supaya storage tidak menumpuk file lama
-            if ($employee?->photo) {
-                Storage::disk('public')->delete($employee->photo);
-            }
-
-            $employeeData['photo'] = $request->file('photo')
-                ->store('employee-photos', 'public');
-        }
-
         if ($employee) {
-            $employee->update($employeeData);
+            $employee->update(['email' => $validated['email']]);
         }
 
         return back()->with('success', 'Profil berhasil diperbarui.');

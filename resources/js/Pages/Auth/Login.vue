@@ -17,8 +17,13 @@ defineProps({
 
 const showPassword = ref(false)
 
+// Pegawai tidak bisa reset password sendiri (self-service email reset
+// dimatikan). Kalau lupa password, harus menghubungi admin supaya admin
+// yang mereset lewat menu "Reset Password" di Data Pegawai.
+const tampilkanInfoLupaPassword = ref(false)
+
 const form = useForm({
-    username: '',
+    nip: '',
     password: '',
     remember: false,
 })
@@ -90,7 +95,7 @@ const submit = () => {
 
                     <label class="font-medium text-gray-700">
 
-                        Username / NIP
+                        NIP
 
                     </label>
 
@@ -101,21 +106,23 @@ const submit = () => {
 
                         <input
 
-                            v-model="form.username"
+                            v-model="form.nip"
 
                             type="text"
 
-                            placeholder="Masukkan Username"
+                            inputmode="numeric"
+
+                            placeholder="Masukkan NIP"
 
                             class="w-full rounded-xl border border-gray-300 py-3 pl-12 pr-4 focus:ring-2 focus:ring-emerald-500 focus:outline-none"/>
 
                     </div>
 
                     <p
-                        v-if="form.errors.username"
+                        v-if="form.errors.nip"
                         class="text-red-500 text-sm mt-2">
 
-                        {{ form.errors.username }}
+                        {{ form.errors.nip }}
 
                     </p>
 
@@ -195,17 +202,30 @@ const submit = () => {
 
                     </label>
 
-                    <Link
+                    <button
 
-                        v-if="canResetPassword"
+                        type="button"
 
-                        :href="route('password.request')"
+                        @click="tampilkanInfoLupaPassword = !tampilkanInfoLupaPassword"
 
                         class="text-sm text-emerald-600 hover:underline">
 
                         Lupa Password?
 
-                    </Link>
+                    </button>
+
+                </div>
+
+                <!-- Info Lupa Password -->
+
+                <div
+
+                    v-if="tampilkanInfoLupaPassword"
+
+                    class="bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm rounded-xl p-4">
+
+                    Untuk alasan keamanan, password tidak dapat direset secara mandiri.
+                    Silakan hubungi <strong>Administrator SIMABS</strong> untuk mengajukan reset password akun Anda.
 
                 </div>
 

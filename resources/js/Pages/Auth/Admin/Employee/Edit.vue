@@ -2,10 +2,16 @@
 import { Head, Link, useForm } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 
+import { ref } from 'vue'
+
 const props = defineProps({
     employee: {
         type: Object,
         required: true,
+    },
+    shiftOptions: {
+        type: Object,
+        default: () => ({}),
     },
 })
 
@@ -23,10 +29,44 @@ const form = useForm({
         ? props.employee.start_date.substring(0, 10)
         : '',
     shift: props.employee.shift ?? '',
+    photo: null,
 })
 
+// Pratinjau foto profil. Foto ini juga jadi acuan pencocokan Face ID
+// pegawai saat absen, jadi begitu admin menggantinya di sini, foto yang
+// dipakai pegawai (di halaman profil & saat verifikasi wajah) ikut berubah.
+const photoPreview = ref(props.employee.photo_url || '')
+
+const pilihFoto = (event) => {
+    const file = event.target.files[0]
+
+    if (!file) {
+        return
+    }
+
+    form.photo = file
+    photoPreview.value = URL.createObjectURL(file)
+}
+
 const submit = () => {
-    form.put(route('admin.employees.update', props.employee.id))
+    // PENTING: jangan pakai form.put() langsung di sini.
+    //
+    // Inertia hanya otomatis meng-convert request jadi POST + _method=PUT
+    // kalau ada FILE BARU yang ikut dikirim. Kalau admin tidak mengganti
+    // foto (photo tetap null), form.put() + forceFormData tetap mengirim
+    // body sebagai multipart/form-data TAPI dengan method HTTP asli PUT.
+    // PHP tidak bisa mem-parsing body multipart pada request PUT (cuma
+    // bisa untuk POST), jadi semua field yang dikirim jadi kosong di sisi
+    // server -> muncul error "field is required" padahal sudah diisi.
+    //
+    // Solusinya: paksa spoofing method lewat field `_method`, lalu kirim
+    // selalu sebagai POST, apa pun kondisinya (ganti foto atau tidak).
+    form.transform((data) => ({
+        ...data,
+        _method: 'put',
+    })).post(route('admin.employees.update', props.employee.id), {
+        forceFormData: true,
+    })
 }
 </script>
 
@@ -67,6 +107,93 @@ const submit = () => {
         <form
             @submit.prevent="submit"
             class="bg-white rounded-2xl shadow-sm border border-slate-100 p-8">
+
+            <!-- FOTO PROFIL / ACUAN FACE ID -->
+
+            <div class="mb-10 pb-8 border-b border-slate-100">
+
+                <div class="flex items-center gap-3 mb-6">
+
+                    <div
+                        class="w-10 h-10 rounded-xl
+                               bg-amber-100 text-amber-600
+                               flex items-center justify-center">
+
+                        📷
+
+                    </div>
+
+                    <div>
+
+                        <h2 class="text-xl font-bold text-slate-800">
+                            Foto Profil
+                        </h2>
+
+                        <p class="text-sm text-slate-500">
+                            Foto ini juga dipakai sebagai acuan pencocokan Face ID saat pegawai absen
+                        </p>
+
+                    </div>
+
+                </div>
+
+                <div class="flex items-center gap-6">
+
+                    <div
+                        class="w-24 h-24 rounded-2xl overflow-hidden
+                               bg-slate-100 border border-slate-200
+                               flex items-center justify-center shrink-0">
+
+                        <img
+                            v-if="photoPreview"
+                            :src="photoPreview"
+                            alt="Foto Profil"
+                            class="w-full h-full object-cover"
+                        />
+
+                        <span v-else class="text-slate-400 text-3xl">
+                            👤
+                        </span>
+
+                    </div>
+
+                    <div>
+
+                        <label
+                            class="inline-block px-4 py-2 rounded-xl
+                                   bg-slate-100 hover:bg-slate-200
+                                   text-slate-700 text-sm font-semibold
+                                   cursor-pointer transition">
+
+                            Ganti Foto
+
+                            <input
+                                type="file"
+                                accept="image/png, image/jpeg, image/jpg"
+                                class="hidden"
+                                @change="pilihFoto"
+                            />
+
+                        </label>
+
+                        <p class="text-xs text-slate-400 mt-2">
+                            Format JPG/PNG, maksimal 2MB.
+                        </p>
+
+                        <p
+                            v-if="form.errors.photo"
+                            class="text-sm text-red-500 mt-1">
+
+                            {{ form.errors.photo }}
+
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </div>
+
 
             <!-- DATA IDENTITAS -->
 
@@ -358,15 +485,50 @@ const submit = () => {
                             Departemen
                         </label>
 
-                        <input
+                        <select
                             v-model="form.department"
-                            type="text"
-                            placeholder="Masukkan departemen"
                             class="w-full rounded-xl border border-slate-300
-                                   px-4 py-3
+                                   px-4 py-3 bg-white
                                    focus:outline-none
-                                   focus:ring-2 focus:ring-emerald-500"
-                        />
+                                   focus:ring-2 focus:ring-emerald-500">
+
+                            <option value="">
+                                Pilih departemen
+                            </option>
+
+                            <option value="IGD">
+                                IGD
+                            </option>
+
+                            <option value="Radiologi">
+                                Radiologi
+                            </option>
+
+                            <option value="Farmasi">
+                                Farmasi
+                            </option>
+
+                            <option value="Rawat Inap">
+                                Rawat Inap
+                            </option>
+
+                            <option value="Administrasi">
+                                Administrasi
+                            </option>
+
+                            <!-- Jaga-jaga: kalau departemen pegawai ini tersimpan
+                                 dengan nilai lama yang sudah tidak ada di daftar
+                                 di atas, tetap tampilkan sebagai pilihan supaya
+                                 datanya tidak hilang / tidak dianggap kosong. -->
+                            <option
+                                v-if="form.department && !['IGD','Radiologi','Farmasi','Rawat Inap','Administrasi'].includes(form.department)"
+                                :value="form.department">
+
+                                {{ form.department }}
+
+                            </option>
+
+                        </select>
 
                         <p
                             v-if="form.errors.department"
@@ -426,19 +588,27 @@ const submit = () => {
                                 Pilih shift
                             </option>
 
-                            <option value="Pagi">
-                                Pagi
-                            </option>
+                            <option
+                                v-for="(detail, nama) in shiftOptions"
+                                :key="nama"
+                                :value="nama">
 
-                            <option value="Siang">
-                                Siang
-                            </option>
+                                {{ nama }} ({{ detail.start }} - {{ detail.end }})
 
-                            <option value="Malam">
-                                Malam
                             </option>
 
                         </select>
+
+                        <p
+                            v-if="form.shift && shiftOptions[form.shift]"
+                            class="text-sm text-slate-500 mt-2">
+
+                            Absen masuk hanya bisa jam
+                            {{ shiftOptions[form.shift].check_in.start }}-{{ shiftOptions[form.shift].check_in.end }},
+                            absen pulang hanya bisa jam
+                            {{ shiftOptions[form.shift].check_out.start }}-{{ shiftOptions[form.shift].check_out.end }}.
+
+                        </p>
 
                     </div>
 

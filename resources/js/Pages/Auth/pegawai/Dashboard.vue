@@ -506,7 +506,14 @@ onUnmounted(() => {
                     <div class="profile-card">
 
                         <div class="profile-photo">
-                            <div class="profile-placeholder">
+                            <img
+                                v-if="employee?.photo_url"
+                                :src="employee.photo_url"
+                                alt="Foto profil"
+                                class="profile-photo-img"
+                            />
+
+                            <div v-else class="profile-placeholder">
                                 {{ initials }}
                             </div>
                         </div>
@@ -1245,6 +1252,17 @@ onUnmounted(() => {
     font-size: 17px;
 
     font-weight: 700;
+}
+
+.profile-photo-img {
+    display: block;
+
+    width: 55px;
+    height: 55px;
+
+    border-radius: 14px;
+
+    object-fit: cover;
 }
 
 .profile-info {

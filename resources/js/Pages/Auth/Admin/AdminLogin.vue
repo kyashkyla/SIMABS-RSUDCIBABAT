@@ -1,12 +1,19 @@
 <script setup>
-import { Head, Link, router } from '@inertiajs/vue3'
-import { ref } from 'vue'
+import { Head, Link, useForm } from '@inertiajs/vue3'
 
-const username = ref('')
-const password = ref('')
+const form = useForm({
+    username: '',
+    password: '',
+    remember: false,
+})
 
-const goDashboard = () => {
-    router.visit(route('admin.dashboard'))
+const submit = () => {
+    // Backend (AuthenticatedSessionController@store) memvalidasi kredensial
+    // lalu mengarahkan ke admin.dashboard jika role = admin,
+    // atau ke pegawai.dashboard jika role = pegawai.
+    form.post(route('login'), {
+        onFinish: () => form.reset('password'),
+    })
 }
 </script>
 
@@ -103,7 +110,7 @@ const goDashboard = () => {
 
                     <!-- FORM -->
 
-                    <form @submit.prevent="goDashboard" class="mt-10 space-y-6">
+                    <form @submit.prevent="submit" class="mt-10 space-y-6">
 
                         <div>
 
@@ -112,11 +119,16 @@ const goDashboard = () => {
                             </label>
 
                             <input
-                                v-model="username"
+                                v-model="form.username"
                                 type="text"
+                                autofocus
                                 placeholder="Masukkan username"
                                 class="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                             />
+
+                            <p v-if="form.errors.username" class="mt-2 text-sm text-red-600">
+                                {{ form.errors.username }}
+                            </p>
 
                         </div>
 
@@ -127,19 +139,24 @@ const goDashboard = () => {
                             </label>
 
                             <input
-                                v-model="password"
+                                v-model="form.password"
                                 type="password"
                                 placeholder="Masukkan password"
                                 class="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                             />
 
+                            <p v-if="form.errors.password" class="mt-2 text-sm text-red-600">
+                                {{ form.errors.password }}
+                            </p>
+
                         </div>
 
                         <button
                             type="submit"
-                            class="w-full bg-gradient-to-r from-emerald-500 to-green-500 text-white rounded-xl py-3 font-semibold hover:from-emerald-600 hover:to-green-600 transition">
+                            :disabled="form.processing"
+                            class="w-full bg-gradient-to-r from-emerald-500 to-green-500 text-white rounded-xl py-3 font-semibold hover:from-emerald-600 hover:to-green-600 transition disabled:opacity-50">
 
-                            Masuk sebagai Admin
+                            {{ form.processing ? 'Memproses...' : 'Masuk sebagai Admin' }}
 
                         </button>
 

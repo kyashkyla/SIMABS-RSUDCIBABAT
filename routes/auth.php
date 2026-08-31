@@ -7,15 +7,17 @@ use App\Http\Controllers\Auth\EmailVerificationPromptController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
-use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
-    Route::get('register', [RegisteredUserController::class, 'create'])
-        ->name('register');
-
-    Route::post('register', [RegisteredUserController::class, 'store']);
+    // Halaman daftar akun publik (register) SENGAJA dimatikan.
+    // Akun pegawai HARUS dibuat oleh admin lewat menu "Tambah Pegawai"
+    // (/admin/pegawai/create), supaya baris `users` dan `employees`
+    // selalu dibuat berpasangan dan otomatis muncul di data admin.
+    // Kalau publik bisa daftar sendiri lewat sini, akun yang terbentuk
+    // cuma punya baris `users` tanpa `employees`, jadi tidak pernah
+    // nyambung ke fitur pegawai maupun ke daftar admin.
 
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
         ->name('login');

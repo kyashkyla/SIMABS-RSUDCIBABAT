@@ -1,79 +1,36 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { Head, Link } from '@inertiajs/vue3'
+import { Head, router } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 
-const startDate = ref('')
-const endDate = ref('')
+const props = defineProps({
+    summary: { type: Object, default: () => ({ hadir: 0, terlambat: 0, tidak_hadir: 0, total: 0 }) },
+    records: { type: Array, default: () => [] },
+    departments: { type: Array, default: () => [] },
+    filters: { type: Object, default: () => ({}) },
+})
+
+const startDate = ref(props.filters.start || '')
+const endDate = ref(props.filters.end || '')
 const department = ref('')
 const shift = ref('')
 const status = ref('')
 
-const reports = ref([
-    {
-        id: 1,
-        date: '12 Agustus 2026',
-        nip: '1987654321',
-        name: 'Ahmad Fauzi',
-        department: 'Radiologi',
-        shift: 'Pagi',
-        checkIn: '07:03',
-        checkOut: '15:05',
-        method: 'Face ID',
-        status: 'Hadir',
-    },
-    {
-        id: 2,
-        date: '12 Agustus 2026',
-        nip: '1987654322',
-        name: 'Maya Kusuma',
-        department: 'IGD',
-        shift: 'Pagi',
-        checkIn: '07:08',
-        checkOut: '15:10',
-        method: 'OTP',
-        status: 'Terlambat',
-    },
-    {
-        id: 3,
-        date: '12 Agustus 2026',
-        nip: '1987654323',
-        name: 'Rizky Saputra',
-        department: 'Farmasi',
-        shift: 'Siang',
-        checkIn: '-',
-        checkOut: '-',
-        method: '-',
-        status: 'Tidak Hadir',
-    },
-    {
-        id: 4,
-        date: '12 Agustus 2026',
-        nip: '1987654324',
-        name: 'Siti Rahma',
-        department: 'Laboratorium',
-        shift: 'Pagi',
-        checkIn: '06:58',
-        checkOut: '15:01',
-        method: 'Face ID',
-        status: 'Hadir',
-    },
-    {
-        id: 5,
-        date: '12 Agustus 2026',
-        nip: '1987654325',
-        name: 'Deni Kurniawan',
-        department: 'Administrasi',
-        shift: 'Siang',
-        checkIn: '13:15',
-        checkOut: '21:02',
-        method: 'Face ID',
-        status: 'Hadir',
-    },
-])
+const reloadByDateRange = () => {
+    if (!startDate.value || !endDate.value) return
+
+    router.get(route('admin.reports.index'), {
+        start: startDate.value,
+        end: endDate.value,
+    }, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+    })
+}
 
 const filteredReports = computed(() => {
-    return reports.value.filter((item) => {
+    return props.records.filter((item) => {
         return (
             (!department.value || item.department === department.value) &&
             (!shift.value || item.shift === shift.value) &&
@@ -85,7 +42,7 @@ const filteredReports = computed(() => {
 const totalPegawai = computed(() => filteredReports.value.length)
 
 const totalHadir = computed(() =>
-    filteredReports.value.filter(item => item.status === 'Hadir').length
+    filteredReports.value.filter(item => item.status === 'Hadir' || item.status === 'Alternatif').length
 )
 
 const totalTerlambat = computed(() =>
@@ -97,19 +54,35 @@ const totalTidakHadir = computed(() =>
 )
 
 const resetFilter = () => {
-    startDate.value = ''
-    endDate.value = ''
     department.value = ''
     shift.value = ''
     status.value = ''
 }
 
+const exportUrl = computed(() => {
+    const params = new URLSearchParams({
+        start: startDate.value,
+        end: endDate.value,
+    })
+    if (department.value) params.set('department', department.value)
+
+    return route('admin.reports.export') + '?' + params.toString()
+})
+
 const exportExcel = () => {
-    alert('Fitur Export Excel akan dihubungkan ke Laravel.')
+    // Export CSV (mudah dibuka di Excel). Untuk .xlsx asli tambahkan paket
+    // "maatwebsite/excel" di backend.
+    window.location.href = exportUrl.value
 }
 
 const exportPDF = () => {
-    alert('Fitur Export PDF akan dihubungkan ke Laravel.')
+    const params = new URLSearchParams({
+        start: startDate.value,
+        end: endDate.value,
+    })
+    if (department.value) params.set('department', department.value)
+
+    window.location.href = route('admin.reports.export-pdf') + '?' + params.toString()
 }
 </script>
 
@@ -202,6 +175,7 @@ const exportPDF = () => {
                         <input
                             v-model="startDate"
                             type="date"
+                            @change="reloadByDateRange"
                             class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                         />
 
@@ -219,6 +193,7 @@ const exportPDF = () => {
                         <input
                             v-model="endDate"
                             type="date"
+                            @change="reloadByDateRange"
                             class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                         />
 
@@ -241,24 +216,8 @@ const exportPDF = () => {
                                 Semua Departemen
                             </option>
 
-                            <option value="Radiologi">
-                                Radiologi
-                            </option>
-
-                            <option value="IGD">
-                                IGD
-                            </option>
-
-                            <option value="Farmasi">
-                                Farmasi
-                            </option>
-
-                            <option value="Laboratorium">
-                                Laboratorium
-                            </option>
-
-                            <option value="Administrasi">
-                                Administrasi
+                            <option v-for="dept in departments" :key="dept" :value="dept">
+                                {{ dept }}
                             </option>
 
                         </select>

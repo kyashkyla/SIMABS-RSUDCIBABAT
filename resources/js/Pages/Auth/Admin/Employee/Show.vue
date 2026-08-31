@@ -7,6 +7,10 @@ const props = defineProps({
         type: Object,
         required: true,
     },
+    shift: {
+        type: Object,
+        default: null,
+    },
 })
 </script>
 
@@ -50,15 +54,24 @@ const props = defineProps({
 
             <div class="flex flex-col md:flex-row md:items-center gap-6">
 
-                <!-- Avatar -->
+                <!-- Avatar (foto profil = acuan Face ID) -->
 
                 <div
-                    class="w-24 h-24 rounded-2xl
+                    class="w-24 h-24 rounded-2xl overflow-hidden
                            bg-emerald-100 text-emerald-700
                            flex items-center justify-center
                            text-4xl font-bold">
 
-                    {{ employee.name.charAt(0) }}
+                    <img
+                        v-if="employee.photo_url"
+                        :src="employee.photo_url"
+                        alt="Foto Profil"
+                        class="w-full h-full object-cover"
+                    />
+
+                    <span v-else>
+                        {{ employee.name.charAt(0) }}
+                    </span>
 
                 </div>
 
@@ -334,6 +347,16 @@ const props = defineProps({
 
                         <p class="font-semibold text-slate-700 mt-1">
                             Shift {{ employee.shift }}
+                        </p>
+
+                        <p
+                            v-if="shift"
+                            class="text-sm text-slate-500 mt-1">
+
+                            Jam kerja {{ shift.start }} - {{ shift.end }}
+                            &bull; Absen masuk {{ shift.check_in.start }}-{{ shift.check_in.end }}
+                            &bull; Absen pulang {{ shift.check_out.start }}-{{ shift.check_out.end }}
+
                         </p>
 
                     </div>

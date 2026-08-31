@@ -2,6 +2,15 @@
 import { Head, Link, useForm } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 
+import { ref } from 'vue'
+
+const props = defineProps({
+    shiftOptions: {
+        type: Object,
+        default: () => ({}),
+    },
+})
+
 const form = useForm({
     nip: '',
     name: '',
@@ -14,10 +23,35 @@ const form = useForm({
     status: 'Aktif',
     start_date: '',
     shift: '',
+    photo: null,
 })
 
+const photoPreview = ref('')
+
+const pilihFoto = (event) => {
+    const file = event.target.files[0]
+
+    if (!file) {
+        return
+    }
+
+    form.photo = file
+    photoPreview.value = URL.createObjectURL(file)
+}
+
+const hapusFoto = () => {
+    if (photoPreview.value) {
+        URL.revokeObjectURL(photoPreview.value)
+    }
+
+    form.photo = null
+    photoPreview.value = ''
+}
+
 const submitForm = () => {
-    form.post(route('admin.employees.store'))
+    form.post(route('admin.employees.store'), {
+        forceFormData: true,
+    })
 }
 </script>
 
@@ -60,6 +94,104 @@ const submitForm = () => {
         <form
             @submit.prevent="submitForm"
             class="space-y-6">
+
+
+            <!-- ================= FOTO PROFIL ================= -->
+
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+
+                <div class="flex items-center gap-3 mb-6">
+
+                    <div
+                        class="w-10 h-10 rounded-xl bg-amber-100
+                               text-amber-600 flex items-center justify-center">
+
+                        📷
+
+                    </div>
+
+                    <div>
+
+                        <h2 class="text-xl font-bold text-slate-800">
+                            Foto Profil
+                        </h2>
+
+                        <p class="text-sm text-slate-500">
+                            Foto ini juga dipakai sebagai acuan Face ID saat pegawai absen
+                        </p>
+
+                    </div>
+
+                </div>
+
+                <div class="flex items-center gap-6">
+
+                    <div
+                        class="w-24 h-24 rounded-2xl overflow-hidden
+                               bg-slate-100 border border-slate-200
+                               flex items-center justify-center shrink-0">
+
+                        <img
+                            v-if="photoPreview"
+                            :src="photoPreview"
+                            alt="Foto Profil"
+                            class="w-full h-full object-cover"
+                        />
+
+                        <span v-else class="text-slate-400 text-3xl">
+                            👤
+                        </span>
+
+                    </div>
+
+                    <div>
+
+                        <label
+                            class="inline-block px-4 py-2 rounded-xl
+                                   bg-slate-100 hover:bg-slate-200
+                                   text-slate-700 text-sm font-semibold
+                                   cursor-pointer transition">
+
+                            Pilih Foto
+
+                            <input
+                                type="file"
+                                accept="image/png, image/jpeg, image/jpg"
+                                class="hidden"
+                                @change="pilihFoto"
+                            />
+
+                        </label>
+
+                        <button
+                            v-if="photoPreview"
+                            type="button"
+                            @click="hapusFoto"
+                            class="ml-2 px-4 py-2 rounded-xl
+                                   text-slate-500 text-sm font-semibold
+                                   hover:bg-slate-50 transition">
+
+                            Hapus
+
+                        </button>
+
+                        <p class="text-xs text-slate-400 mt-2">
+                            Opsional saat ini. Format JPG/PNG, maksimal 2MB.
+                        </p>
+
+                        <p
+                            v-if="form.errors.photo"
+                            class="text-sm text-red-500 mt-1">
+
+                            {{ form.errors.photo }}
+
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </div>
 
 
             <!-- ================= DATA IDENTITAS ================= -->
@@ -510,19 +642,27 @@ const submitForm = () => {
                             Pilih shift
                         </option>
 
-                        <option value="Pagi">
-                            Shift Pagi
-                        </option>
+                        <option
+                            v-for="(detail, nama) in shiftOptions"
+                            :key="nama"
+                            :value="nama">
 
-                        <option value="Siang">
-                            Shift Siang
-                        </option>
+                            Shift {{ nama }} ({{ detail.start }} - {{ detail.end }})
 
-                        <option value="Malam">
-                            Shift Malam
                         </option>
 
                     </select>
+
+                    <p
+                        v-if="form.shift && shiftOptions[form.shift]"
+                        class="text-sm text-slate-500 mt-2">
+
+                        Absen masuk hanya bisa jam
+                        {{ shiftOptions[form.shift].check_in.start }}-{{ shiftOptions[form.shift].check_in.end }},
+                        absen pulang hanya bisa jam
+                        {{ shiftOptions[form.shift].check_out.start }}-{{ shiftOptions[form.shift].check_out.end }}.
+
+                    </p>
 
                     <p
                         v-if="form.errors.shift"
@@ -582,9 +722,10 @@ const submitForm = () => {
                             </h3>
 
                             <p class="text-sm text-purple-700 mt-1 leading-6">
-                                Setelah pegawai berhasil ditambahkan,
-                                administrator dapat melakukan registrasi
-                                wajah pegawai melalui menu Face ID.
+                                Kalau foto profil di atas sudah diunggah, foto
+                                tersebut otomatis menjadi acuan Face ID pegawai.
+                                Kalau belum diunggah sekarang, admin bisa
+                                menambahkannya nanti lewat menu edit pegawai.
                             </p>
 
                         </div>

@@ -1,64 +1,36 @@
 <script setup>
-import { Head, Link } from '@inertiajs/vue3'
+import { Head, Link, router } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
+import { reactive, computed } from 'vue'
 
-const attendance = [
-    {
-        id: 1,
-        name: 'Ahmad Fauzi',
-        nip: '1987654321',
-        department: 'Radiologi',
-        date: '10 Agustus 2026',
-        checkIn: '07:03',
-        checkOut: '15:02',
-        method: 'Face ID',
-        status: 'Hadir',
-    },
-    {
-        id: 2,
-        name: 'Maya Kusuma',
-        nip: '1987654322',
-        department: 'IGD',
-        date: '10 Agustus 2026',
-        checkIn: '07:08',
-        checkOut: '15:05',
-        method: 'OTP',
-        status: 'Hadir',
-    },
-    {
-        id: 3,
-        name: 'Rizky Saputra',
-        nip: '1987654323',
-        department: 'Farmasi',
-        date: '10 Agustus 2026',
-        checkIn: '-',
-        checkOut: '-',
-        method: '-',
-        status: 'Tidak Hadir',
-    },
-    {
-        id: 4,
-        name: 'Siti Rahma',
-        nip: '1987654324',
-        department: 'Administrasi',
-        date: '10 Agustus 2026',
-        checkIn: '08:17',
-        checkOut: '16:01',
-        method: 'Alternatif',
-        status: 'Terlambat',
-    },
-    {
-        id: 5,
-        name: 'Budi Santoso',
-        nip: '1987654325',
-        department: 'Laboratorium',
-        date: '09 Agustus 2026',
-        checkIn: '06:58',
-        checkOut: '14:59',
-        method: 'Face ID',
-        status: 'Hadir',
-    },
-]
+const props = defineProps({
+    attendances: { type: Object, required: true }, // Laravel paginator
+    departments: { type: Array, default: () => [] },
+    filters: { type: Object, default: () => ({}) },
+})
+
+const form = reactive({
+    date: props.filters.date || '',
+    department: props.filters.department || '',
+    search: props.filters.search || '',
+})
+
+const rows = computed(() => props.attendances.data)
+
+const summary = computed(() => ({
+    total: rows.value.length,
+    hadir: rows.value.filter((r) => r.status === 'Hadir' || r.status === 'Alternatif').length,
+    terlambat: rows.value.filter((r) => r.status === 'Terlambat').length,
+    tidakHadir: rows.value.filter((r) => r.status === 'Tidak Hadir').length,
+}))
+
+const applyFilter = () => {
+    router.get(route('admin.attendance.history'), form, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+    })
+}
 
 const statusClass = (status) => {
     switch (status) {
@@ -115,24 +87,6 @@ const methodClass = (method) => {
 
             </div>
 
-            <div class="flex gap-3">
-
-                <button
-                    class="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition">
-
-                    Export Excel
-
-                </button>
-
-                <button
-                    class="px-4 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition">
-
-                    Export PDF
-
-                </button>
-
-            </div>
-
         </div>
 
 
@@ -147,11 +101,11 @@ const methodClass = (method) => {
                 </p>
 
                 <h2 class="text-3xl font-bold text-slate-800 mt-2">
-                    132
+                    {{ summary.total }}
                 </h2>
 
                 <p class="text-sm text-slate-400 mt-1">
-                    Hari ini
+                    Halaman ini
                 </p>
 
             </div>
@@ -164,11 +118,11 @@ const methodClass = (method) => {
                 </p>
 
                 <h2 class="text-3xl font-bold text-green-600 mt-2">
-                    120
+                    {{ summary.hadir }}
                 </h2>
 
                 <p class="text-sm text-green-500 mt-1">
-                    91% kehadiran
+                    Halaman ini
                 </p>
 
             </div>
@@ -181,11 +135,11 @@ const methodClass = (method) => {
                 </p>
 
                 <h2 class="text-3xl font-bold text-yellow-500 mt-2">
-                    8
+                    {{ summary.terlambat }}
                 </h2>
 
                 <p class="text-sm text-yellow-500 mt-1">
-                    Hari ini
+                    Halaman ini
                 </p>
 
             </div>
@@ -198,11 +152,11 @@ const methodClass = (method) => {
                 </p>
 
                 <h2 class="text-3xl font-bold text-red-500 mt-2">
-                    4
+                    {{ summary.tidakHadir }}
                 </h2>
 
                 <p class="text-sm text-red-500 mt-1">
-                    Hari ini
+                    Halaman ini
                 </p>
 
             </div>
@@ -246,6 +200,7 @@ const methodClass = (method) => {
                     </label>
 
                     <input
+                        v-model="form.date"
                         type="date"
                         class="w-full rounded-xl border border-slate-200 px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                     />
@@ -262,17 +217,16 @@ const methodClass = (method) => {
                     </label>
 
                     <select
+                        v-model="form.department"
                         class="w-full rounded-xl border border-slate-200 px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
 
                         <option value="">
                             Semua Departemen
                         </option>
 
-                        <option>Radiologi</option>
-                        <option>IGD</option>
-                        <option>Farmasi</option>
-                        <option>Laboratorium</option>
-                        <option>Administrasi</option>
+                        <option v-for="dept in departments" :key="dept" :value="dept">
+                            {{ dept }}
+                        </option>
 
                     </select>
 
@@ -284,21 +238,15 @@ const methodClass = (method) => {
                 <div>
 
                     <label class="block text-sm font-medium text-slate-600 mb-2">
-                        Status
+                        Cari Nama Pegawai
                     </label>
 
-                    <select
-                        class="w-full rounded-xl border border-slate-200 px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
-
-                        <option value="">
-                            Semua Status
-                        </option>
-
-                        <option>Hadir</option>
-                        <option>Terlambat</option>
-                        <option>Tidak Hadir</option>
-
-                    </select>
+                    <input
+                        v-model="form.search"
+                        type="text"
+                        placeholder="Ketik nama pegawai..."
+                        class="w-full rounded-xl border border-slate-200 px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    />
 
                 </div>
 
@@ -332,6 +280,7 @@ const methodClass = (method) => {
             <div class="flex justify-end mt-5">
 
                 <button
+                    @click="applyFilter"
                     class="px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition">
 
                     Terapkan Filter
@@ -364,7 +313,7 @@ const methodClass = (method) => {
                     </div>
 
                     <span class="text-sm text-slate-500">
-                        5 data
+                        {{ attendances.total }} data
                     </span>
 
                 </div>
@@ -408,10 +357,6 @@ const methodClass = (method) => {
                                 Status
                             </th>
 
-                            <th class="text-center px-6 py-4 text-sm font-semibold text-slate-600">
-                                Aksi
-                            </th>
-
                         </tr>
 
                     </thead>
@@ -419,8 +364,14 @@ const methodClass = (method) => {
 
                     <tbody class="divide-y divide-slate-100">
 
+                        <tr v-if="rows.length === 0">
+                            <td colspan="7" class="px-6 py-10 text-center text-slate-400">
+                                Tidak ada data absensi untuk filter ini.
+                            </td>
+                        </tr>
+
                         <tr
-                            v-for="item in attendance"
+                            v-for="item in rows"
                             :key="item.id"
                             class="hover:bg-slate-50 transition">
 
@@ -504,23 +455,30 @@ const methodClass = (method) => {
                             </td>
 
 
-                            <td class="px-6 py-4 text-center">
-
-                                <Link
-                                    :href="`/admin/absensi/${item.id}`"
-                                    class="text-emerald-600 hover:text-emerald-800 font-medium text-sm">
-
-                                    Detail
-
-                                </Link>
-
-                            </td>
-
                         </tr>
 
                     </tbody>
 
                 </table>
+
+            </div>
+
+            <!-- Pagination -->
+            <div
+                v-if="attendances.links && attendances.links.length > 3"
+                class="flex flex-wrap gap-2 justify-end p-6 border-t border-slate-100">
+
+                <Link
+                    v-for="(link, idx) in attendances.links"
+                    :key="idx"
+                    :href="link.url || '#'"
+                    v-html="link.label"
+                    class="px-3 py-1.5 rounded-lg text-sm"
+                    :class="[
+                        link.active ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200',
+                        !link.url && 'opacity-40 pointer-events-none'
+                    ]"
+                />
 
             </div>
 

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onBeforeUnmount } from 'vue'
+import { ref } from 'vue'
 import { useForm } from '@inertiajs/vue3'
 
 import PegawaiLayout from './PegawaiLayout.vue'
@@ -32,19 +32,18 @@ const props = defineProps({
 
 /* =========================================================
    PROFILE
+   Catatan: pegawai HANYA boleh mengubah email dari halaman ini.
+   Foto profil (dipakai juga sebagai acuan Face ID) dan data
+   kepegawaian lain hanya bisa diubah oleh admin.
 ========================================================= */
 
 const isEditingProfile = ref(false)
 
-// Foto yang sedang tersimpan di server (dari database)
-const defaultPhoto = ref(props.pegawai.foto || '')
-
-// Foto yang sedang ditampilkan (bisa berubah kalau user pilih foto baru)
-const photoPreview = ref(defaultPhoto.value)
+// Foto profil hanya ditampilkan (read-only), dikelola oleh admin
+const fotoProfil = ref(props.pegawai.foto || '')
 
 const profileForm = useForm({
     email: props.pegawai.email || '',
-    photo: null,
 })
 
 
@@ -71,47 +70,6 @@ const statusPengajuan = ref(true)
 
 
 /* =========================================================
-   PROFILE PHOTO
-========================================================= */
-
-const pilihFotoProfil = (event) => {
-
-    const file = event.target.files[0]
-
-    if (!file) {
-        return
-    }
-
-    // Batasi hanya gambar
-    if (!file.type.startsWith('image/')) {
-        return
-    }
-
-    // Batasi ukuran 2 MB
-    if (file.size > 2 * 1024 * 1024) {
-        alert('Ukuran foto maksimal 2 MB.')
-        return
-    }
-
-    profileForm.photo = file
-
-    photoPreview.value = URL.createObjectURL(file)
-}
-
-
-const hapusFotoBaru = () => {
-
-    if (photoPreview.value && photoPreview.value !== defaultPhoto.value) {
-        URL.revokeObjectURL(photoPreview.value)
-    }
-
-    profileForm.photo = null
-
-    photoPreview.value = defaultPhoto.value
-}
-
-
-/* =========================================================
    PROFILE ACTION
 ========================================================= */
 
@@ -129,25 +87,16 @@ const batalEditProfil = () => {
 
     profileForm.clearErrors()
     profileForm.email = props.pegawai.email || ''
-
-    hapusFotoBaru()
 }
 
 
 const simpanProfil = () => {
 
     profileForm.post(route('pegawai.pengaturan.update'), {
-        forceFormData: true,
         preserveScroll: true,
 
         onSuccess: () => {
-
             isEditingProfile.value = false
-
-            // Foto baru (kalau ada) sudah tersimpan, jadikan itu foto default
-            defaultPhoto.value = photoPreview.value
-
-            profileForm.photo = null
         },
     })
 }
@@ -193,20 +142,7 @@ const simpanPassword = () => {
 }
 
 
-/* =========================================================
-   CLEANUP OBJECT URL
-========================================================= */
 
-onBeforeUnmount(() => {
-
-    if (
-        photoPreview.value &&
-        photoPreview.value !== defaultPhoto.value
-    ) {
-        URL.revokeObjectURL(photoPreview.value)
-    }
-
-})
 </script>
 
 
@@ -364,15 +300,15 @@ onBeforeUnmount(() => {
                     class="profile-edit"
                 >
 
-                    <!-- FOTO -->
+                    <!-- FOTO (read-only, dikelola admin) -->
 
                     <div class="edit-photo-area">
 
-                        <label class="profile-photo large photo-upload">
+                        <div class="profile-photo large">
 
                             <img
-                                v-if="photoPreview"
-                                :src="photoPreview"
+                                v-if="fotoProfil"
+                                :src="fotoProfil"
                                 alt="Foto Profil"
                             />
 
@@ -380,20 +316,7 @@ onBeforeUnmount(() => {
                                 v-else
                             />
 
-                            <div class="photo-hover-overlay">
-
-                                <PencilIcon />
-
-                            </div>
-
-                            <input
-                                type="file"
-                                accept="image/*"
-                                class="photo-input-hidden"
-                                @change="pilihFotoProfil"
-                            />
-
-                        </label>
+                        </div>
 
 
                         <div class="photo-description">
@@ -403,29 +326,13 @@ onBeforeUnmount(() => {
                             </strong>
 
                             <span>
-                                JPG, PNG atau WEBP
+                                Foto ini juga dipakai sebagai acuan Face ID.
                             </span>
 
                             <span>
-                                Maksimal 2 MB
+                                Hanya admin yang dapat mengubah foto profil.
+                                Hubungi admin bila foto perlu diperbarui.
                             </span>
-
-                            <span
-                                v-if="profileForm.errors.photo"
-                                class="field-error"
-                            >
-                                {{ profileForm.errors.photo }}
-                            </span>
-
-
-                            <button
-                                v-if="profileForm.photo"
-                                type="button"
-                                class="remove-photo"
-                                @click="hapusFotoBaru"
-                            >
-                                Hapus foto baru
-                            </button>
 
                         </div>
 

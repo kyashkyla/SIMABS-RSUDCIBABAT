@@ -379,12 +379,21 @@ const faceIdNotRegistered = computed(() =>
                                 <div class="flex items-center gap-3">
 
                                     <div
-                                        class="w-11 h-11 rounded-full
+                                        class="w-11 h-11 rounded-full overflow-hidden
                                                bg-emerald-100 text-emerald-700
                                                flex items-center justify-center
-                                               font-bold">
+                                               font-bold shrink-0">
 
-                                        {{ employee.name.charAt(0) }}
+                                        <img
+                                            v-if="employee.photo_url"
+                                            :src="employee.photo_url"
+                                            :alt="employee.name"
+                                            class="w-full h-full object-cover"
+                                        />
+
+                                        <span v-else>
+                                            {{ employee.name.charAt(0) }}
+                                        </span>
 
                                     </div>
 
@@ -447,7 +456,7 @@ const faceIdNotRegistered = computed(() =>
                             <td class="px-6 py-4 text-center">
 
                                 <span
-                                    v-if="employee.faceId"
+                                    v-if="employee.face_id_registered"
                                     class="inline-flex items-center gap-1
                                            px-3 py-1 rounded-full
                                            bg-green-100 text-green-700
@@ -540,16 +549,18 @@ const faceIdNotRegistered = computed(() =>
 
                                     </Link>
 
-                                    <button
-                                        v-if="!employee.faceId"
-                                        title="Registrasi Face ID"
+                                    <Link
+                                        v-if="!employee.face_id_registered"
+                                        :href="`/admin/pegawai/${employee.id}/edit`"
+                                        title="Registrasi Face ID (unggah foto profil)"
                                         class="w-9 h-9 rounded-lg
                                                bg-emerald-100 hover:bg-emerald-200
-                                               text-emerald-600 transition">
+                                               text-emerald-600 transition
+                                               flex items-center justify-center">
 
                                         😊
 
-                                    </button>
+                                    </Link>
 
                                 </div>
 

@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Pegawai;
 
 use App\Http\Controllers\Controller;
 use App\Models\Attendance;
+use App\Models\Employee;
 use App\Models\OfficeLocation;
+use App\Support\ShiftSchedule;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -89,7 +91,8 @@ class AttendanceController extends Controller
     /**
      * POST /pegawai/absensi/simpan
      * Menyimpan absen MASUK. Ditolak kalau di luar jendela waktu absen
-     * masuk yang diatur admin (config/attendance.php).
+     * masuk shift pegawai yang bersangkutan (Pagi/Siang/Malam), yang
+     * jamnya dihitung dari config/attendance.php.
      */
     public function store(Request $request): JsonResponse
     {
@@ -100,10 +103,12 @@ class AttendanceController extends Controller
             'photo' => ['nullable', 'string'],
         ]);
 
-        $this->assertWithinWindow('check_in');
-
         $employee = Auth::user()->employee;
         abort_if(!$employee, 404, 'Data pegawai tidak ditemukan.');
+
+        // Jendela absen masuk mengikuti shift pegawai ini, bukan jam kantor
+        // umum -> shift Pagi/Siang/Malam masing-masing punya jamnya sendiri.
+        $this->assertWithinCheckInWindow($employee);
 
         // Sudah absen masuk hari ini -> tidak boleh menimpa data.
         $existing = $employee->todayAttendance();
@@ -130,8 +135,8 @@ class AttendanceController extends Controller
             $photoPath = $this->storeCapturedPhoto($data['photo'], $employee->id, 'masuk');
         }
 
-        $lateAfter = $this->windowTime('late_after');
-        $status = now()->format('H:i:s') > $lateAfter->format('H:i:s') ? 'terlambat' : 'hadir';
+        $lateAfter = ShiftSchedule::lateAfter($employee->shift, now()->toDateString());
+        $status = now()->gt($lateAfter) ? 'terlambat' : 'hadir';
 
         $attendance = Attendance::updateOrCreate(
             [
@@ -163,7 +168,11 @@ class AttendanceController extends Controller
     /**
      * POST /pegawai/absensi/pulang
      * Menyimpan absen PULANG. Ditolak kalau di luar jendela waktu absen
-     * pulang, atau kalau pegawai belum absen masuk hari ini.
+     * pulang shift pegawai, atau kalau pegawai belum absen masuk hari ini.
+     *
+     * Jendela absen pulang dihitung dari TANGGAL ABSEN MASUK pegawai
+     * (bukan tanggal hari ini), supaya shift Malam (23:00 - 07:00) yang
+     * absen pulangnya baru terjadi dini hari besok tetap dihitung benar.
      */
     public function storeCheckOut(Request $request): JsonResponse
     {
@@ -173,8 +182,6 @@ class AttendanceController extends Controller
             'method' => ['required', 'in:face,otp,alternative'],
             'photo' => ['nullable', 'string'],
         ]);
-
-        $this->assertWithinWindow('check_out');
 
         $employee = Auth::user()->employee;
         abort_if(!$employee, 404, 'Data pegawai tidak ditemukan.');
@@ -192,6 +199,8 @@ class AttendanceController extends Controller
                 'message' => 'Anda sudah melakukan absen pulang hari ini.',
             ], 422);
         }
+
+        $this->assertWithinCheckOutWindow($employee, $attendance->attendance_date->toDateString());
 
         $office = $this->resolveOffice($data['latitude'], $data['longitude']);
         abort_if(!$office, 404, 'Lokasi kantor belum diatur oleh admin.');
@@ -367,38 +376,43 @@ class AttendanceController extends Controller
     }
 
     /**
-     * Ambil jam mulai/selesai jendela absensi ('check_in' atau 'check_out')
-     * dari config/attendance.php, sebagai objek Carbon di HARI INI.
+     * Tolak request absen MASUK kalau waktu sekarang di luar jendela absen
+     * masuk shift pegawai ini. Ini dicek SELALU di server — jangan cuma
+     * andalkan validasi di frontend/Vue, supaya jam device pegawai yang
+     * dimanipulasi tidak bisa menembus batas.
      */
-    private function windowTime(string $key): Carbon
+    private function assertWithinCheckInWindow(Employee $employee): void
     {
-        if ($key === 'late_after') {
-            return Carbon::parse(config('attendance.late_after'));
-        }
+        $window = ShiftSchedule::checkInWindow($employee->shift, now()->toDateString());
 
-        return Carbon::parse(config("attendance.{$key}.start"));
+        $this->assertWithinWindow($window, 'absen masuk');
     }
 
     /**
-     * Tolak request kalau waktu sekarang di luar jendela absensi
-     * ('check_in' atau 'check_out'). Ini dicek SELALU di server —
-     * jangan cuma andalkan validasi di frontend/Vue, supaya jam device
-     * pegawai yang dimanipulasi tidak bisa menembus batas.
+     * Tolak request absen PULANG kalau waktu sekarang di luar jendela absen
+     * pulang shift pegawai ini. $attendanceDate = tanggal absen masuknya,
+     * supaya shift yang melewati tengah malam (Malam) tetap dihitung benar.
      */
-    private function assertWithinWindow(string $type): void
+    private function assertWithinCheckOutWindow(Employee $employee, string $attendanceDate): void
     {
-        $start = Carbon::parse(config("attendance.{$type}.start"));
-        $end = Carbon::parse(config("attendance.{$type}.end"));
+        $window = ShiftSchedule::checkOutWindow($employee->shift, $attendanceDate);
+
+        $this->assertWithinWindow($window, 'absen pulang');
+    }
+
+    /**
+     * @param  array{start: Carbon, end: Carbon}  $window
+     */
+    private function assertWithinWindow(array $window, string $label): void
+    {
         $now = now();
 
-        if ($now->lt($start) || $now->gt($end)) {
-            $label = $type === 'check_in' ? 'absen masuk' : 'absen pulang';
-
+        if ($now->lt($window['start']) || $now->gt($window['end'])) {
             abort(response()->json([
                 'message' => "Anda tidak dapat melakukan {$label} karena sudah bukan jamnya.",
                 'window' => [
-                    'start' => $start->format('H:i'),
-                    'end' => $end->format('H:i'),
+                    'start' => $window['start']->format('H:i'),
+                    'end' => $window['end']->format('H:i'),
                 ],
             ], 422));
         }
