@@ -28,6 +28,8 @@ class SettingController extends Controller
                 'workEndMalam' => Setting::get('work_end_malam', '07:00'),
                 
                 'lateTolerance' => Setting::get('late_tolerance_minutes', '15'),
+                'checkInWindowMinutes' => Setting::get('check_in_window_minutes', (string) config('attendance.check_in_window_minutes', 30)),
+                'checkOutWindowMinutes' => Setting::get('check_out_window_minutes', (string) config('attendance.check_out_window_minutes', 30)),
             ],
             'notifikasi' => [
                 'notifyAdminNewRequest' => (bool) Setting::get('notify_admin_new_request', '1'),
@@ -49,6 +51,8 @@ class SettingController extends Controller
             'work_start_malam' => 'required|date_format:H:i',
             'work_end_malam' => 'required|date_format:H:i',
             'late_tolerance' => 'required|integer|min:0|max:120',
+            'check_in_window_minutes' => 'required|integer|min:1|max:180',
+            'check_out_window_minutes' => 'required|integer|min:1|max:180',
         ]);
 
         Setting::set('work_start_pagi', $validated['work_start_pagi'], 'Jam Masuk Pagi', 'jam_kerja');
@@ -61,6 +65,8 @@ class SettingController extends Controller
         Setting::set('work_end_malam', $validated['work_end_malam'], 'Jam Pulang Malam', 'jam_kerja');
 
         Setting::set('late_tolerance_minutes', $validated['late_tolerance'], 'Toleransi Keterlambatan (menit)', 'jam_kerja');
+        Setting::set('check_in_window_minutes', $validated['check_in_window_minutes'], 'Toleransi Absen Masuk (menit)', 'jam_kerja');
+        Setting::set('check_out_window_minutes', $validated['check_out_window_minutes'], 'Toleransi Absen Pulang (menit)', 'jam_kerja');
 
         return back()->with('success', 'Pengaturan jam kerja berhasil disimpan.');
     }

@@ -14,9 +14,15 @@ class Setting extends Model
      */
     public static function get(string $key, mixed $default = null): mixed
     {
-        return Cache::rememberForever("setting:{$key}", function () use ($key, $default) {
-            return static::where('key', $key)->value('value') ?? $default;
+        // PENTING: cache HANYA menyimpan nilai mentah dari DB (atau null kalau
+        // belum diset). Default TIDAK ikut disimpan ke cache, supaya pemanggil
+        // lain yang memberi default berbeda untuk key yang sama tidak ikut
+        // "terkunci" ke default milik pemanggil pertama yang mengisi cache.
+        $value = Cache::rememberForever("setting:{$key}", function () use ($key) {
+            return static::where('key', $key)->value('value');
         });
+
+        return $value ?? $default;
     }
 
     /**

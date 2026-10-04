@@ -67,8 +67,14 @@ class ShiftSchedule
             $end = $endFallbacks[$shiftNameLower] ?? '15:00';
         }
 
-        $checkInMinutes = (int) config('attendance.check_in_window_minutes', 30);
-        $checkOutMinutes = (int) config('attendance.check_out_window_minutes', 30);
+        $checkInMinutes = (int) \App\Models\Setting::get(
+            'check_in_window_minutes',
+            config('attendance.check_in_window_minutes', 30)
+        );
+        $checkOutMinutes = (int) \App\Models\Setting::get(
+            'check_out_window_minutes',
+            config('attendance.check_out_window_minutes', 30)
+        );
         $lateAfterMinutes = (int) \App\Models\Setting::get('late_tolerance_minutes', 15);
 
         $startTime = Carbon::parse($start);

@@ -23,6 +23,8 @@ const jamKerjaForm = useForm({
     work_end_malam: props.jamKerja.workEndMalam,
     
     late_tolerance: props.jamKerja.lateTolerance,
+    check_in_window_minutes: props.jamKerja.checkInWindowMinutes,
+    check_out_window_minutes: props.jamKerja.checkOutWindowMinutes,
 })
 
 const saveJamKerja = () => {
@@ -185,10 +187,10 @@ const savePassword = () => {
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 
                         <div>
-                            <label class="text-sm font-medium text-slate-600">Toleransi (menit)</label>
+                            <label class="text-sm font-medium text-slate-600">Toleransi Terlambat (menit)</label>
                             <input
                                 v-model="jamKerjaForm.late_tolerance"
                                 type="number"
@@ -196,8 +198,39 @@ const savePassword = () => {
                                 max="120"
                                 class="mt-1.5 w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                             />
+                            <p class="mt-1 text-xs text-slate-400">Absen masuk lewat sekian menit dari jam mulai tetap diterima, tapi berstatus "Terlambat".</p>
                             <p v-if="jamKerjaForm.errors.late_tolerance" class="mt-1 text-sm text-red-600">
                                 {{ jamKerjaForm.errors.late_tolerance }}
+                            </p>
+                        </div>
+
+                        <div>
+                            <label class="text-sm font-medium text-slate-600">Toleransi Absen Masuk (menit)</label>
+                            <input
+                                v-model="jamKerjaForm.check_in_window_minutes"
+                                type="number"
+                                min="1"
+                                max="180"
+                                class="mt-1.5 w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                            />
+                            <p class="mt-1 text-xs text-slate-400">Lama jendela absen masuk, dihitung sejak jam mulai shift. Mis. 30 menit &amp; jam mulai 07:00 &rarr; absen masuk bisa 07:00-07:30.</p>
+                            <p v-if="jamKerjaForm.errors.check_in_window_minutes" class="mt-1 text-sm text-red-600">
+                                {{ jamKerjaForm.errors.check_in_window_minutes }}
+                            </p>
+                        </div>
+
+                        <div>
+                            <label class="text-sm font-medium text-slate-600">Toleransi Absen Pulang (menit)</label>
+                            <input
+                                v-model="jamKerjaForm.check_out_window_minutes"
+                                type="number"
+                                min="1"
+                                max="180"
+                                class="mt-1.5 w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                            />
+                            <p class="mt-1 text-xs text-slate-400">Lama jendela absen pulang, dihitung sejak jam selesai shift. Mis. 30 menit &amp; jam selesai 15:00 &rarr; absen pulang bisa 15:00-15:30.</p>
+                            <p v-if="jamKerjaForm.errors.check_out_window_minutes" class="mt-1 text-sm text-red-600">
+                                {{ jamKerjaForm.errors.check_out_window_minutes }}
                             </p>
                         </div>
 

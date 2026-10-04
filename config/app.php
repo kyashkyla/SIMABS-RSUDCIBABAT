@@ -60,12 +60,18 @@ return [
     |--------------------------------------------------------------------------
     |
     | Here you may specify the default timezone for your application, which
-    | will be used by the PHP date and date-time functions. The timezone
-    | is set to "UTC" by default as it is suitable for most use cases.
+    | will be used by the PHP date and date-time functions. RSUD Cibabat
+    | beroperasi di WIB (UTC+7), jadi timezone HARUS Asia/Jakarta -- bukan
+    | UTC -- karena semua jam shift & jendela absen (mis. "07:00") diatur
+    | admin dalam jam lokal WIB, sedangkan now()/Carbon::now() mengikuti
+    | timezone ini. Kalau dibiarkan UTC, "sekarang" versi server selalu
+    | tertinggal 7 jam dari jam lokal, sehingga jendela absen (yang hanya
+    | 30 menit) nyaris tidak pernah cocok dan status "terlambat" jadi salah
+    | hitung.
     |
     */
 
-    'timezone' => 'UTC',
+    'timezone' => env('APP_TIMEZONE', 'Asia/Jakarta'),
 
     /*
     |--------------------------------------------------------------------------
