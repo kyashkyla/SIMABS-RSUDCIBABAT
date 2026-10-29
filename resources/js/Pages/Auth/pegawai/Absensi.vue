@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { Head, router } from '@inertiajs/vue3'
 
 import PegawaiLayout from './PegawaiLayout.vue'
+import { toast } from '@/lib/toast'
 
 import LocationValidation from '@/Components/pegawai/LocationValidation.vue'
 import FaceRecognition from '@/Components/pegawai/FaceRecognition.vue'
@@ -24,17 +25,39 @@ const props = defineProps({
         type: String,
         default: 'none',
     },
+    /*
+    | Dikirim backend: { state, message, window }
+    | state = check_in   -> jam absen masuk, belum absen   (boleh lanjut)
+    |         check_out  -> jam absen pulang, belum pulang (boleh lanjut)
+    |         completed  -> masuk & pulang sudah           (dicegat)
+    |         checked_in -> sudah masuk, jam pulang belum   (dicegat)
+    |         closed     -> bukan jam absensi              (dicegat)
+    */
+    attendancePhase: {
+        type: Object,
+        default: () => ({ state: 'check_in', message: '', window: null }),
+    },
 })
 
-const isCheckOut = computed(() => {
-    return props.todayAttendance && props.todayAttendance.check_in_at && !props.todayAttendance.check_out_at
-})
+// Absen pulang kalau fase dari server = check_out.
+const isCheckOut = computed(() => props.attendancePhase?.state === 'check_out')
 
+// Boleh lanjut ke Face / OTP hanya kalau sedang jam absen masuk / pulang
+// DAN belum absen di fase itu.
+const canAttend = computed(() =>
+    ['check_in', 'check_out'].includes(props.attendancePhase?.state)
+)
+
+// Halaman selalu mulai dari step Lokasi. Pencegatan terjadi saat pegawai
+// menekan tombol "Lanjut" setelah lokasi valid (lihat locationConfirmed).
 const step = ref('location')
 
 // Koordinat device yang sudah tervalidasi di step lokasi, dipakai lagi
 // saat menyimpan absensi di step Face Recognition / OTP.
 const deviceLocation = ref(null)
+
+// Mencegah tombol "Lanjut" diproses dua kali saat status sedang dicek.
+const isCheckingPhase = ref(false)
 
 /*
 |--------------------------------------------------------------------------
@@ -60,21 +83,67 @@ const attendanceMethod = ref('')
 
 /*
 |--------------------------------------------------------------------------
-| Setelah lokasi berhasil
+| Ambil status absensi terbaru dari server
 |--------------------------------------------------------------------------
 |
-| Kalau belum ada approval:
-| Location → Face Recognition
-|
-| Kalau sudah ada approval:
-| Location → OTP
-|
-| Approval temporary maupun permanent
-| sama-sama menggunakan OTP setelah lokasi.
+| Dipanggil tepat saat "Lanjut" ditekan, supaya status tidak basi
+| (mis. halaman dibuka sebelum jam absen, lalu "Lanjut" ditekan setelahnya).
 |
 */
 
-const locationConfirmed = (location) => {
+const refreshPhase = () =>
+    new Promise((resolve) => {
+        router.reload({
+            only: ['attendancePhase', 'todayAttendance'],
+            preserveState: true,
+            preserveScroll: true,
+            onFinish: () => resolve(),
+        })
+    })
+
+const blockedTitles = {
+    completed: 'Anda Telah Melakukan Absensi',
+    checked_in: 'Anda Telah Absen Masuk',
+    closed: 'Di Luar Jam Absen',
+}
+
+/*
+|--------------------------------------------------------------------------
+| Setelah lokasi berhasil
+|--------------------------------------------------------------------------
+|
+| Dicegat (muncul notif, tetap di halaman ini) kalau:
+| - sudah absen masuk & pulang
+| - sudah absen masuk dan jam pulang belum dibuka
+| - bukan jam absen masuk / pulang
+|
+| Kalau lolos:
+| Belum ada approval  : Location → Face Recognition
+| Sudah ada approval  : Location → OTP
+|
+*/
+
+const locationConfirmed = async (location) => {
+    if (isCheckingPhase.value) return
+    isCheckingPhase.value = true
+
+    try {
+        await refreshPhase()
+    } finally {
+        isCheckingPhase.value = false
+    }
+
+    if (!canAttend.value) {
+        const state = props.attendancePhase?.state
+
+        toast.warning(
+            props.attendancePhase?.message ||
+                'Anda tidak dapat melakukan absen karena bukan jamnya.',
+            { title: blockedTitles[state] || 'Tidak Dapat Absen' }
+        )
+        return
+    }
+
     deviceLocation.value = location
 
     if (
@@ -125,8 +194,8 @@ const alternativeSubmitted = () => {
 | Approval Admin
 |--------------------------------------------------------------------------
 |
-| Untuk sementara masih simulasi frontend.
-| Nanti bagian ini diganti response dari backend/database.
+| Status approval dicek otomatis ke server oleh komponen WaitingApproval
+| (polling tiap 5 detik). Begitu disetujui, event ini terpanggil.
 |
 */
 
@@ -135,10 +204,22 @@ const approvalReceived = (type) => {
 
     /*
     Setelah admin approve, pegawai HARUS
-    melakukan deteksi lokasi kembali.
+    melakukan deteksi lokasi kembali. Pengecekan jam absen tetap
+    terjadi lagi saat tombol "Lanjut" ditekan.
     */
 
     step.value = 'location'
+}
+
+/*
+|--------------------------------------------------------------------------
+| Pengajuan Ditolak Admin
+|--------------------------------------------------------------------------
+*/
+
+const approvalRejected = () => {
+    approvalStatus.value = 'none'
+    router.visit(route('pegawai.dashboard'))
 }
 
 /*
@@ -169,7 +250,7 @@ const finishAttendance = () => {
 
     <PegawaiLayout>
 
-        <div class="min-h-screen bg-[#f5fcfa] px-5 py-6 md:px-8">
+        <div class="bg-[#f5fcfa] px-0 py-2 sm:px-5 sm:py-6 md:min-h-screen md:px-8">
 
             <!-- ===================================================== -->
             <!-- LOCATION -->
@@ -213,6 +294,7 @@ const finishAttendance = () => {
             <WaitingApproval
                 v-else-if="step === 'waiting'"
                 @approved="approvalReceived"
+                @rejected="approvalRejected"
             />
 
 

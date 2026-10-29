@@ -205,8 +205,6 @@ const capturePhoto = () => {
     return canvas.toDataURL('image/jpeg', 0.85)
 }
 
-
-
 const simpanAbsensi = async (photoDataUrl) => {
     const routeName = props.isCheckOut ? 'pegawai.absensi.pulang' : 'pegawai.absensi.simpan'
     const response = await window.axios.post(route(routeName), {
@@ -254,14 +252,10 @@ const ajukanAlternatif = () => {
         <div class="card-title">
 
             <div class="title-icon">
-
                 <FaceSmileIcon />
-
             </div>
 
-
             <div>
-
                 <h2>
                     Face Recognition
                 </h2>
@@ -269,16 +263,11 @@ const ajukanAlternatif = () => {
                 <p>
                     Verifikasi wajah untuk mencatat kehadiran.
                 </p>
-
             </div>
 
-
             <div class="verified-location">
-
                 <ShieldCheckIcon />
-
                 Lokasi Valid
-
             </div>
 
         </div>
@@ -346,7 +335,6 @@ const ajukanAlternatif = () => {
             <CameraIcon />
 
             <div>
-
                 <strong>
                     Pastikan wajah terlihat jelas
                 </strong>
@@ -355,7 +343,6 @@ const ajukanAlternatif = () => {
                     Pastikan pencahayaan cukup dan wajah berada
                     di dalam area kamera.
                 </span>
-
             </div>
 
         </div>
@@ -371,7 +358,6 @@ const ajukanAlternatif = () => {
             <ArrowPathIcon class="loading-small" />
 
             <div>
-
                 <strong>
                     Menyiapkan Face Recognition
                 </strong>
@@ -379,7 +365,6 @@ const ajukanAlternatif = () => {
                 <span>
                     Memuat model pengenalan wajah & mengaktifkan kamera.
                 </span>
-
             </div>
 
         </div>
@@ -395,7 +380,6 @@ const ajukanAlternatif = () => {
             <ArrowPathIcon class="loading-small" />
 
             <div>
-
                 <strong>
                     Sedang melakukan verifikasi
                 </strong>
@@ -403,7 +387,6 @@ const ajukanAlternatif = () => {
                 <span>
                     Mohon tunggu sampai proses pengenalan wajah selesai.
                 </span>
-
             </div>
 
         </div>
@@ -419,7 +402,6 @@ const ajukanAlternatif = () => {
             <ExclamationTriangleIcon />
 
             <div>
-
                 <strong>
                     Face Recognition tidak berhasil
                 </strong>
@@ -427,7 +409,6 @@ const ajukanAlternatif = () => {
                 <span>
                     {{ errorMessage || 'Anda dapat mencoba kembali atau mengajukan absensi alternatif kepada Admin.' }}
                 </span>
-
             </div>
 
         </div>
@@ -443,7 +424,6 @@ const ajukanAlternatif = () => {
             <ExclamationTriangleIcon />
 
             <div>
-
                 <strong>
                     Foto referensi wajah belum tersedia
                 </strong>
@@ -451,7 +431,6 @@ const ajukanAlternatif = () => {
                 <span>
                     {{ errorMessage || 'Unggah foto profil yang jelas di halaman Pengaturan sebelum menggunakan Face Recognition.' }}
                 </span>
-
             </div>
 
         </div>
@@ -467,7 +446,6 @@ const ajukanAlternatif = () => {
             <ExclamationTriangleIcon />
 
             <div>
-
                 <strong>
                     Kamera tidak dapat diakses
                 </strong>
@@ -475,7 +453,6 @@ const ajukanAlternatif = () => {
                 <span>
                     {{ errorMessage }}
                 </span>
-
             </div>
 
         </div>
@@ -514,22 +491,16 @@ const ajukanAlternatif = () => {
                 class="secondary-button"
                 @click="cobaLagi"
             >
-
                 <ArrowPathIcon />
-
                 Coba Lagi
-
             </button>
-
 
             <button
                 type="button"
                 class="alternative-button"
                 @click="ajukanAlternatif"
             >
-
                 Ajukan Absen Alternatif
-
             </button>
 
         </div>
@@ -547,22 +518,16 @@ const ajukanAlternatif = () => {
                 class="secondary-button"
                 @click="setup"
             >
-
                 <ArrowPathIcon />
-
                 Coba Lagi
-
             </button>
-
 
             <button
                 type="button"
                 class="alternative-button"
                 @click="ajukanAlternatif"
             >
-
                 Ajukan Absen Alternatif
-
             </button>
 
         </div>
@@ -653,7 +618,7 @@ const ajukanAlternatif = () => {
 .face-frame {
     position: relative;
 
-    width: 310px;
+    width: min(310px, 100%); /* DIUBAH (sebelumnya: width: 310px;) */
     height: 270px;
 
     display: flex;

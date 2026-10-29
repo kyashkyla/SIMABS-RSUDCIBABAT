@@ -39,64 +39,50 @@ const submit = () => {
 
 <Head title="Login Pegawai" />
 
-<div class="min-h-screen bg-slate-100 flex items-center justify-center px-6 py-10">
+<div class="min-h-screen bg-slate-100 flex items-center justify-center px-4 py-6 sm:px-6 sm:py-10">
 
     <div class="w-full max-w-6xl bg-white rounded-3xl shadow-2xl overflow-hidden grid lg:grid-cols-2">
 
         <!-- ====================== LEFT ====================== -->
 
-        <div class="p-12">
+        <div class="p-6 sm:p-12">
 
             <!-- Logo -->
 
             <div class="flex items-center gap-4">
 
                 <div class="bg-emerald-500 p-3 rounded-2xl shadow-lg">
-
                     <BuildingOffice2Icon class="w-8 h-8 text-white"/>
-
                 </div>
 
                 <div>
-
                     <h1 class="font-bold text-2xl text-slate-800">
-
                         SIMABS
-
                     </h1>
 
                     <p class="text-sm text-slate-500">
-
                         RSUD Cibabat Kota Cimahi
-
                     </p>
-
                 </div>
 
             </div>
 
-            <h2 class="text-4xl font-bold mt-10 text-slate-800">
-
-                Selamat Datang 
-
+            <h2 class="text-3xl sm:text-4xl font-bold mt-8 sm:mt-10 text-slate-800">
+                Selamat Datang
             </h2>
 
             <p class="text-slate-500 mt-2">
-
                 Silakan login untuk melanjutkan absensi.
-
             </p>
 
-            <form @submit.prevent="submit" class="mt-10 space-y-6">
+            <form @submit.prevent="submit" class="mt-8 sm:mt-10 space-y-6">
 
-                <!-- Username -->
+                <!-- NIP -->
 
                 <div>
 
                     <label class="font-medium text-gray-700">
-
                         NIP
-
                     </label>
 
                     <div class="relative mt-2">
@@ -105,15 +91,10 @@ const submit = () => {
                             class="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"/>
 
                         <input
-
                             v-model="form.nip"
-
                             type="text"
-
                             inputmode="numeric"
-
                             placeholder="Masukkan NIP"
-
                             class="w-full rounded-xl border border-gray-300 py-3 pl-12 pr-4 focus:ring-2 focus:ring-emerald-500 focus:outline-none"/>
 
                     </div>
@@ -133,9 +114,7 @@ const submit = () => {
                 <div>
 
                     <label class="font-medium text-gray-700">
-
                         Password
-
                     </label>
 
                     <div class="relative mt-2">
@@ -144,21 +123,14 @@ const submit = () => {
                             class="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"/>
 
                         <input
-
                             v-model="form.password"
-
                             :type="showPassword ? 'text' : 'password'"
-
                             placeholder="Masukkan Password"
-
                             class="w-full rounded-xl border border-gray-300 py-3 pl-12 pr-12 focus:ring-2 focus:ring-emerald-500 focus:outline-none"/>
 
                         <button
-
                             type="button"
-
                             @click="showPassword=!showPassword"
-
                             class="absolute right-4 top-1/2 -translate-y-1/2">
 
                             <EyeIcon
@@ -195,19 +167,14 @@ const submit = () => {
                             class="rounded border-gray-300 text-emerald-500">
 
                         <span class="text-sm text-gray-600">
-
                             Ingat Saya
-
                         </span>
 
                     </label>
 
                     <button
-
                         type="button"
-
                         @click="tampilkanInfoLupaPassword = !tampilkanInfoLupaPassword"
-
                         class="text-sm text-emerald-600 hover:underline">
 
                         Lupa Password?
@@ -219,9 +186,7 @@ const submit = () => {
                 <!-- Info Lupa Password -->
 
                 <div
-
                     v-if="tampilkanInfoLupaPassword"
-
                     class="bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm rounded-xl p-4">
 
                     Untuk alasan keamanan, password tidak dapat direset secara mandiri.
@@ -232,9 +197,7 @@ const submit = () => {
                 <!-- Button -->
 
                 <button
-
                     :disabled="form.processing"
-
                     class="w-full bg-gradient-to-r from-emerald-500 to-green-500 text-white py-3 rounded-xl font-semibold hover:shadow-xl transition">
 
                     Masuk
@@ -247,20 +210,20 @@ const submit = () => {
 
             <div class="text-center mt-6 text-gray-500">
 
-    Belum punya akun?
+                Belum punya akun?
 
-    <span class="text-emerald-600 font-semibold">
-        Hubungi Administrator
-    </span>
+                <span class="text-emerald-600 font-semibold">
+                    Hubungi Administrator
+                </span>
 
-</div>
+            </div>
 
         </div>
 
-        <!-- ====================== RIGHT ====================== -->
+        <!-- ====================== RIGHT (hanya tampil di layar lebar) ====================== -->
 
         <div
-            class="bg-gradient-to-br from-emerald-500 to-green-500 text-white flex flex-col justify-center items-center p-12 relative overflow-hidden">
+            class="bg-gradient-to-br from-emerald-500 to-green-500 text-white hidden lg:flex flex-col justify-center items-center p-12 relative overflow-hidden">
 
             <!-- Dekorasi -->
 
@@ -279,9 +242,7 @@ const submit = () => {
             </div>
 
             <h2 class="text-4xl font-bold mt-8">
-
                 RSUD Cibabat
-
             </h2>
 
             <p class="text-center mt-4 max-w-md leading-8">
@@ -298,51 +259,18 @@ const submit = () => {
             <div class="grid grid-cols-3 gap-4 mt-10 w-full">
 
                 <div class="bg-white/10 rounded-xl py-5 text-center">
-
-                    <h3 class="text-3xl font-bold">
-
-                        132
-
-                    </h3>
-
-                    <p class="text-sm">
-
-                        Pegawai
-
-                    </p>
-
+                    <h3 class="text-3xl font-bold">132</h3>
+                    <p class="text-sm">Pegawai</p>
                 </div>
 
                 <div class="bg-white/10 rounded-xl py-5 text-center">
-
-                    <h3 class="text-3xl font-bold">
-
-                        98%
-
-                    </h3>
-
-                    <p class="text-sm">
-
-                        Akurasi
-
-                    </p>
-
+                    <h3 class="text-3xl font-bold">98%</h3>
+                    <p class="text-sm">Akurasi</p>
                 </div>
 
                 <div class="bg-white/10 rounded-xl py-5 text-center">
-
-                    <h3 class="text-3xl font-bold">
-
-                        24/7
-
-                    </h3>
-
-                    <p class="text-sm">
-
-                        Online
-
-                    </p>
-
+                    <h3 class="text-3xl font-bold">24/7</h3>
+                    <p class="text-sm">Online</p>
                 </div>
 
             </div>
@@ -352,21 +280,15 @@ const submit = () => {
             <div class="w-full mt-10 space-y-3">
 
                 <div class="bg-white/10 rounded-xl p-3">
-
                     ✓ Face Recognition
-
                 </div>
 
                 <div class="bg-white/10 rounded-xl p-3">
-
                     ✓ Validasi Geolocation
-
                 </div>
 
                 <div class="bg-white/10 rounded-xl p-3">
-
                     ✓ OTP Alternatif (Persetujuan Admin)
-
                 </div>
 
             </div>

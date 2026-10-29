@@ -51,14 +51,17 @@ class AttendanceController extends Controller
             $approvalStatus = $activeRequest->approval_type == 'permanen' ? 'permanent' : 'temporary';
         }
 
+        $todayAttendance = $employee->todayAttendance();
+
         return Inertia::render('Auth/pegawai/Absensi', [
             'employee' => [
                 'id' => $employee->id,
                 'name' => $employee->name,
                 'photo_url' => $employee->photo ? Storage::url($employee->photo) : null,
             ],
-            'todayAttendance' => $employee->todayAttendance(),
+            'todayAttendance' => $todayAttendance,
             'approvalStatus' => $approvalStatus,
+            'attendancePhase' => $this->resolveAttendancePhase($employee),
         ]);
     }
 
@@ -135,9 +138,20 @@ class AttendanceController extends Controller
             abort_if(empty($data['otp_code']), 422, 'Kode OTP wajib diisi.');
             
             $cachedOtp = \Illuminate\Support\Facades\Cache::get('otp_' . $employee->id);
-            if (!$cachedOtp || $cachedOtp !== strtoupper($data['otp_code'])) {
+
+            // OTP sudah hangus (lewat 3 menit) atau tidak pernah diminta.
+            if (!$cachedOtp) {
                 return response()->json([
-                    'message' => 'Kode OTP tidak valid atau sudah kedaluwarsa.',
+                    'message' => 'Kode OTP sudah kedaluwarsa. Silakan minta kode OTP baru.',
+                    'code' => 'otp_expired',
+                ], 422);
+            }
+
+            // OTP masih berlaku, tapi kode yang dimasukkan tidak cocok.
+            if ($cachedOtp !== strtoupper($data['otp_code'])) {
+                return response()->json([
+                    'message' => 'Kode OTP yang Anda masukkan salah.',
+                    'code' => 'otp_invalid',
                 ], 422);
             }
             
@@ -247,9 +261,20 @@ class AttendanceController extends Controller
             abort_if(empty($data['otp_code']), 422, 'Kode OTP wajib diisi.');
             
             $cachedOtp = \Illuminate\Support\Facades\Cache::get('otp_' . $employee->id);
-            if (!$cachedOtp || $cachedOtp !== strtoupper($data['otp_code'])) {
+
+            // OTP sudah hangus (lewat 3 menit) atau tidak pernah diminta.
+            if (!$cachedOtp) {
                 return response()->json([
-                    'message' => 'Kode OTP tidak valid atau sudah kedaluwarsa.',
+                    'message' => 'Kode OTP sudah kedaluwarsa. Silakan minta kode OTP baru.',
+                    'code' => 'otp_expired',
+                ], 422);
+            }
+
+            // OTP masih berlaku, tapi kode yang dimasukkan tidak cocok.
+            if ($cachedOtp !== strtoupper($data['otp_code'])) {
+                return response()->json([
+                    'message' => 'Kode OTP yang Anda masukkan salah.',
+                    'code' => 'otp_invalid',
                 ], 422);
             }
             
@@ -488,6 +513,99 @@ class AttendanceController extends Controller
     }
 
     /**
+     * Tentukan fase absensi pegawai SEKARANG, dikirim ke Vue (prop
+     * attendancePhase) supaya tombol "Lanjut" setelah lokasi valid bisa
+     * mencegat sebelum masuk ke Face Recognition / OTP.
+     *
+     * state:
+     * - check_in   : belum absen masuk & sedang jam absen masuk   -> boleh lanjut
+     * - check_out  : sudah masuk, belum pulang & jam absen pulang -> boleh lanjut
+     * - completed  : masuk & pulang sudah                          -> dicegat
+     * - checked_in : sudah masuk, jam pulang belum dibuka          -> dicegat
+     * - closed     : bukan jam absensi                             -> dicegat
+     *
+     * @return array{state: string, message: string, window: array|null}
+     */
+    private function resolveAttendancePhase(Employee $employee): array
+    {
+        $now = now();
+        $attendance = $employee->todayAttendance();
+
+        // Sudah absen masuk DAN pulang.
+        if ($attendance && $attendance->check_in_at && $attendance->check_out_at) {
+            return [
+                'state' => 'completed',
+                'message' => 'Anda sudah menyelesaikan absensi hari ini.',
+                'window' => null,
+            ];
+        }
+
+        // Sudah absen masuk, belum pulang -> cek jendela absen PULANG.
+        if ($attendance && $attendance->check_in_at) {
+            $window = ShiftSchedule::checkOutWindow(
+                $employee->shift,
+                $attendance->attendance_date->toDateString()
+            );
+            $windowInfo = [
+                'start' => $window['start']->format('H:i'),
+                'end' => $window['end']->format('H:i'),
+            ];
+
+            if ($now->lt($window['start'])) {
+                return [
+                    'state' => 'checked_in',
+                    'message' => "Anda sudah melakukan absen masuk hari ini. Absen pulang dibuka pukul {$windowInfo['start']} - {$windowInfo['end']}.",
+                    'window' => $windowInfo,
+                ];
+            }
+
+            if ($now->gt($window['end'])) {
+                return [
+                    'state' => 'closed',
+                    'message' => $this->closedMessage($window, 'absen pulang'),
+                    'window' => $windowInfo,
+                ];
+            }
+
+            return ['state' => 'check_out', 'message' => '', 'window' => $windowInfo];
+        }
+
+        // Belum absen masuk -> cek jendela absen MASUK.
+        $window = ShiftSchedule::checkInWindow($employee->shift, $now->toDateString());
+        $windowInfo = [
+            'start' => $window['start']->format('H:i'),
+            'end' => $window['end']->format('H:i'),
+        ];
+
+        if ($now->lt($window['start']) || $now->gt($window['end'])) {
+            return [
+                'state' => 'closed',
+                'message' => $this->closedMessage($window, 'absen masuk'),
+                'window' => $windowInfo,
+            ];
+        }
+
+        return ['state' => 'check_in', 'message' => '', 'window' => $windowInfo];
+    }
+
+    /**
+     * Pesan penolakan di luar jendela absen. Sudah lewat X menit dari jam
+     * mulai jendela -> pesan umum tanpa menyebut masuk/pulang.
+     *
+     * @param  array{start: Carbon, end: Carbon}  $window
+     */
+    private function closedMessage(array $window, string $label): string
+    {
+        $genericAfter = (int) config('attendance.generic_closed_after_minutes', 60);
+
+        if (now()->gt($window['start']->copy()->addMinutes($genericAfter))) {
+            return 'Anda tidak dapat melakukan absen karena bukan jamnya.';
+        }
+
+        return "Anda tidak dapat melakukan {$label} karena sudah bukan jamnya.";
+    }
+
+    /**
      * @param  array{start: Carbon, end: Carbon}  $window
      */
     private function assertWithinWindow(array $window, string $label): void
@@ -496,7 +614,7 @@ class AttendanceController extends Controller
 
         if ($now->lt($window['start']) || $now->gt($window['end'])) {
             abort(response()->json([
-                'message' => "Anda tidak dapat melakukan {$label} karena sudah bukan jamnya.",
+                'message' => $this->closedMessage($window, $label),
                 'window' => [
                     'start' => $window['start']->format('H:i'),
                     'end' => $window['end']->format('H:i'),
@@ -525,6 +643,60 @@ class AttendanceController extends Controller
 
         return $filename;
     }
+
+    /**
+     * GET /pegawai/absensi/status-approval
+     * Dipanggil berkala oleh halaman "Menunggu Persetujuan Admin" untuk
+     * mengetahui keputusan admin atas pengajuan absensi alternatif terakhir.
+     *
+     * status: none | pending | approved | rejected
+     * type  : temporary | permanent (hanya saat approved)
+     */
+    public function approvalStatus(): JsonResponse
+    {
+        $employee = Auth::user()->employee;
+        abort_if(!$employee, 404, 'Data pegawai tidak ditemukan.');
+
+        $latest = \App\Models\AttendanceRequest::where('employee_id', $employee->id)
+            ->latest('id')
+            ->first();
+
+        if (!$latest) {
+            return response()->json(['status' => 'none']);
+        }
+
+        if ($latest->status === 'pending') {
+            return response()->json(['status' => 'pending']);
+        }
+
+        if ($latest->status === 'rejected') {
+            return response()->json([
+                'status' => 'rejected',
+                'message' => $latest->admin_note,
+            ]);
+        }
+
+        // approved: permanen selalu aktif, sementara hanya berlaku di hari keputusan.
+        $isActive = $latest->approval_type === 'permanen'
+            || ($latest->approval_type === 'sementara'
+                && $latest->decided_at
+                && $latest->decided_at->isToday());
+
+        if (!$isActive) {
+            return response()->json(['status' => 'none']);
+        }
+
+        return response()->json([
+            'status' => 'approved',
+            'type' => $latest->approval_type === 'permanen' ? 'permanent' : 'temporary',
+        ]);
+    }
+
+    /**
+     * POST /pegawai/absensi/otp/request
+     * Kirim kode OTP ke notifikasi pegawai. Jam absen dicek DULU di sini,
+     * jadi kalau sekarang bukan waktunya absen, OTP tidak dikirim.
+     */
     public function requestOtp(Request $request): JsonResponse
     {
         $employee = Auth::user()->employee;
@@ -545,6 +717,22 @@ class AttendanceController extends Controller
             return response()->json([
                 'message' => 'Anda tidak memiliki izin absensi OTP aktif.',
             ], 422);
+        }
+
+        // Cek jam absen SEBELUM OTP dikirim, supaya pegawai langsung tahu kalau
+        // sekarang bukan waktunya absen (tidak perlu menunggu sampai verifikasi).
+        $attendance = $employee->todayAttendance();
+
+        if ($attendance && $attendance->check_in_at && $attendance->check_out_at) {
+            return response()->json([
+                'message' => 'Anda sudah menyelesaikan absensi hari ini.',
+            ], 422);
+        }
+
+        if ($attendance && $attendance->check_in_at) {
+            $this->assertWithinCheckOutWindow($employee, $attendance->attendance_date->toDateString());
+        } else {
+            $this->assertWithinCheckInWindow($employee);
         }
 
         $otpCode = strtoupper(\Illuminate\Support\Str::random(6));

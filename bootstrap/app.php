@@ -24,6 +24,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => CheckRole::class,
         ]);
 
+        $middleware->trustProxies(at: '*');
+
         // Kalau user sudah login tapi buka halaman guest (mis. /login),
         // arahkan sesuai role, bukan mental ke "/" (halaman pilihan).
         RedirectIfAuthenticated::redirectUsing(function ($request) {

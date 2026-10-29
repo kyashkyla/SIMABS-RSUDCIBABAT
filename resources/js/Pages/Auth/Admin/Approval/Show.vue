@@ -2,6 +2,8 @@
 import { Head, Link, useForm } from '@inertiajs/vue3'
 import { computed } from 'vue'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
+import { toast } from '@/lib/toast'
+import { confirmDialog } from '@/lib/confirm'
 
 const props = defineProps({
     approval: { type: Object, required: true },
@@ -18,8 +20,18 @@ const rejectForm = useForm({
 
 const isPending = computed(() => props.approval.status === 'Menunggu')
 
-const approve = () => {
-    if (!confirm('Setujui pengajuan absensi alternatif ini?')) return
+const approve = async () => {
+    const jenis = approveForm.approval_type === 'permanen' ? 'permanen' : 'sementara'
+
+    const ok = await confirmDialog({
+        title: 'Setujui Pengajuan?',
+        message: `Pengajuan absensi alternatif ${props.approval.name} akan disetujui sebagai approval ${jenis}.`,
+        confirmText: 'Ya, Setujui',
+        cancelText: 'Batal',
+        variant: 'success',
+    })
+
+    if (!ok) return
 
     approveForm.put(route('admin.approvals.approve', props.approval.id))
 }
@@ -28,7 +40,7 @@ const reject = () => {
     rejectForm.admin_note = approveForm.admin_note
 
     if (!rejectForm.admin_note) {
-        alert('Isi alasan penolakan pada kolom Catatan Admin terlebih dahulu.')
+        toast.warning('Isi alasan penolakan pada kolom Catatan Admin terlebih dahulu.')
         return
     }
 

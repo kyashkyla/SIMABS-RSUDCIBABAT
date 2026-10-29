@@ -24,11 +24,13 @@ class Employee extends Model
         'shift',
         'face_id_registered',
         'photo',
+        'face_updated_at',
     ];
 
     protected $casts = [
         'start_date' => 'date',
         'face_id_registered' => 'boolean',
+        'face_updated_at' => 'datetime',
     ];
 
     public function user(): BelongsTo

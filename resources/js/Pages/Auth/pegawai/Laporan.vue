@@ -483,4 +483,73 @@ td span:not(.method):not(.status) {
 
 }
 
+/* =========================================================
+   TAMPILAN HP (<= 550px) — desktop tidak terpengaruh
+========================================================= */
+@media (max-width: 550px) {
+
+    .page-header h1 {
+        font-size: 21px;
+    }
+
+    .filter-box {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .nav-button {
+        width: 36px;
+        height: 36px;
+    }
+
+    /* 4 ringkasan jadi 2 x 2 */
+    .summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .summary-card {
+        padding: 12px;
+    }
+
+    .summary-card span,
+    .summary-card small {
+        font-size: 11px;
+    }
+
+    .summary-card strong {
+        font-size: 19px;
+    }
+
+    .card {
+        padding: 14px;
+    }
+
+    /* font tabel 9-11px terlalu kecil di HP */
+    th {
+        padding: 10px 8px;
+        font-size: 11px;
+    }
+
+    td {
+        padding: 12px 8px;
+        font-size: 13px;
+    }
+
+    td span:not(.method):not(.status) {
+        font-size: 11px;
+    }
+
+    .method,
+    .status {
+        font-size: 11px;
+    }
+}
+
+@media (max-width: 340px) {
+    .summary-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 </style>

@@ -20,13 +20,13 @@ const submit = () => {
 <template>
     <Head title="Login Administrator" />
 
-    <div class="min-h-screen bg-slate-100 flex items-center justify-center px-4">
+    <div class="min-h-screen bg-slate-100 flex items-center justify-center px-4 py-6">
 
         <div class="w-full max-w-6xl bg-white rounded-3xl overflow-hidden shadow-2xl grid md:grid-cols-2">
 
-            <!-- ================= LEFT ================= -->
+            <!-- ================= LEFT (hanya tampil di layar lebar) ================= -->
 
-            <div class="relative bg-gradient-to-br from-emerald-500 via-emerald-500 to-teal-400 text-white p-12">
+            <div class="relative hidden md:block bg-gradient-to-br from-emerald-500 via-emerald-500 to-teal-400 text-white p-12">
 
                 <div class="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center mb-6">
                     🏥
@@ -92,7 +92,7 @@ const submit = () => {
 
             <!-- ================= RIGHT ================= -->
 
-            <div class="p-12 flex items-center">
+            <div class="p-6 sm:p-12 flex items-center">
 
                 <div class="w-full">
 
@@ -100,7 +100,7 @@ const submit = () => {
                         🛡️
                     </div>
 
-                    <h2 class="text-4xl font-bold text-slate-800">
+                    <h2 class="text-3xl sm:text-4xl font-bold text-slate-800">
                         Masuk Admin
                     </h2>
 
@@ -110,7 +110,7 @@ const submit = () => {
 
                     <!-- FORM -->
 
-                    <form @submit.prevent="submit" class="mt-10 space-y-6">
+                    <form @submit.prevent="submit" class="mt-8 sm:mt-10 space-y-6">
 
                         <div>
 

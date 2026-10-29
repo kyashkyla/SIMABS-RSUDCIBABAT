@@ -14,6 +14,13 @@ const search = ref('')
 const selectedDepartment = ref('Semua Departemen')
 const selectedStatus = ref('Semua Status')
 
+// Pilihan filter diambil dari departemen yang benar-benar dipakai pegawai,
+// jadi otomatis ikut bertambah kalau ada unit baru.
+const departmentOptions = computed(() =>
+    [...new Set(props.employees.map((e) => e.department).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, 'id'))
+)
+
 const filteredEmployees = computed(() => {
     return props.employees.filter((employee) => {
 
@@ -262,11 +269,11 @@ const faceIdNotRegistered = computed(() =>
                            focus:ring-emerald-500">
 
                     <option>Semua Departemen</option>
-                    <option>Radiologi</option>
-                    <option>IGD</option>
-                    <option>Farmasi</option>
-                    <option>Rawat Inap</option>
-                    <option>Administrasi</option>
+                    <option
+                        v-for="dept in departmentOptions"
+                        :key="dept">
+                        {{ dept }}
+                    </option>
 
                 </select>
 

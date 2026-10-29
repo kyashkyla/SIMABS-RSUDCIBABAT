@@ -56,7 +56,6 @@ const notifOpen = ref(false);
 onMounted(() => {
     const savedState = localStorage.getItem('pegawai_sidebar_collapsed');
 
-
     if (savedState !== null) {
         sidebarCollapsed.value = savedState === 'true';
     }
@@ -101,31 +100,37 @@ const toggleProfile = () => {
 
 // =====================================================
 // MENU
+// (short = label pendek untuk menu bawah di HP)
 // =====================================================
 
 const menuItems = [
     {
         name: 'Dashboard',
+        short: 'Beranda',
         route: 'pegawai.dashboard',
         icon: Home,
     },
     {
         name: 'Absensi',
+        short: 'Absen',
         route: 'pegawai.absensi',
         icon: Clock,
     },
     {
         name: 'Riwayat Absensi',
+        short: 'Riwayat',
         route: 'pegawai.riwayat',
         icon: FileText,
     },
     {
         name: 'Laporan',
+        short: 'Laporan',
         route: 'pegawai.laporan',
         icon: BarChart3,
     },
     {
         name: 'Pengaturan',
+        short: 'Setelan',
         route: 'pegawai.pengaturan',
         icon: Settings,
     },
@@ -143,17 +148,15 @@ const isActive = (routeName) => {
     <div class="min-h-screen bg-[#f4fbf9] text-slate-800">
 
         <!-- ================================================= -->
-        <!-- SIDEBAR -->
+        <!-- SIDEBAR (khusus desktop) -->
         <!-- ================================================= -->
 
         <aside
-            class="fixed left-0 top-0 z-40 h-screen bg-gradient-to-b from-[#13b8a6] to-[#18c768] text-white transition-all duration-300"
+            class="fixed left-0 top-0 z-40 hidden h-screen bg-gradient-to-b from-[#13b8a6] to-[#18c768] text-white transition-all duration-300 lg:block"
             :class="sidebarCollapsed ? 'w-[110px]' : 'w-[335px]'"
         >
 
-            <!-- ========================= -->
             <!-- LOGO + TOGGLE -->
-            <!-- ========================= -->
 
             <div
                 class="flex h-[122px] border-b border-white/15"
@@ -194,9 +197,7 @@ const isActive = (routeName) => {
             </div>
 
 
-            <!-- ========================= -->
             <!-- ROLE -->
-            <!-- ========================= -->
 
             <div
                 v-if="!sidebarCollapsed"
@@ -214,9 +215,7 @@ const isActive = (routeName) => {
             </div>
 
 
-            <!-- ========================= -->
             <!-- MENU -->
-            <!-- ========================= -->
 
             <nav
                 class="space-y-2"
@@ -264,9 +263,7 @@ const isActive = (routeName) => {
             </nav>
 
 
-            <!-- ========================= -->
             <!-- LOGOUT -->
-            <!-- ========================= -->
 
             <div
                 class="absolute bottom-0 left-0 right-0 border-t border-white/15 p-4"
@@ -312,32 +309,28 @@ const isActive = (routeName) => {
             class="min-h-screen transition-all duration-300"
             :class="
                 sidebarCollapsed
-                    ? 'ml-[110px]'
-                    : 'ml-[335px]'
+                    ? 'lg:ml-[110px]'
+                    : 'lg:ml-[335px]'
             "
         >
 
-            <!-- ========================= -->
             <!-- TOPBAR -->
-            <!-- ========================= -->
 
             <header
-                class="sticky top-0 z-30 flex h-[90px] items-center justify-between border-b border-slate-200 bg-white px-8"
+                class="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 pt-[env(safe-area-inset-top)] sm:px-6 lg:h-[90px] lg:px-8"
             >
 
                 <!-- TANGGAL (otomatis mengikuti tanggal hari ini) -->
-                <div>
-                    <p class="text-sm text-slate-500">
+                <div class="min-w-0">
+                    <p class="truncate text-xs text-slate-500 sm:text-sm">
                         {{ tanggalHariIni }}
                     </p>
                 </div>
 
 
-                <!-- ========================= -->
                 <!-- RIGHT SIDE -->
-                <!-- ========================= -->
 
-                <div class="flex items-center gap-6">
+                <div class="flex shrink-0 items-center gap-2 sm:gap-6">
 
                     <!-- NOTIFICATION -->
                     <div class="relative">
@@ -351,17 +344,17 @@ const isActive = (routeName) => {
                             </span>
                         </button>
 
-                        <div v-if="notifOpen" class="absolute right-0 top-14 w-80 overflow-hidden rounded-xl border border-slate-200 bg-white py-2 shadow-xl z-50">
+                        <div v-if="notifOpen" class="fixed left-3 right-3 top-[68px] z-50 overflow-hidden rounded-xl border border-slate-200 bg-white py-2 shadow-xl sm:absolute sm:left-auto sm:right-0 sm:top-14 sm:w-80">
                             <div class="px-4 py-2 border-b border-slate-100 flex justify-between items-center">
                                 <span class="font-bold text-sm">Notifikasi</span>
                             </div>
-                            
+
                             <div class="max-h-64 overflow-y-auto">
                                 <div v-if="page.props.notifications?.latest?.length === 0" class="p-4 text-center text-sm text-slate-500">
                                     Belum ada notifikasi.
                                 </div>
-                                <button 
-                                    v-for="notif in page.props.notifications?.latest" 
+                                <button
+                                    v-for="notif in page.props.notifications?.latest"
                                     :key="notif.id"
                                     @click="router.put(route('notifications.read', notif.id)); notifOpen = false;"
                                     class="w-full text-left px-4 py-3 border-b border-slate-50 hover:bg-slate-50 transition flex gap-3"
@@ -430,9 +423,7 @@ const isActive = (routeName) => {
                         </button>
 
 
-                        <!-- ========================= -->
                         <!-- PROFILE DROPDOWN -->
-                        <!-- ========================= -->
 
                         <div
                             v-if="profileOpen"
@@ -440,16 +431,16 @@ const isActive = (routeName) => {
                         >
 
                             <Link
-    :href="route('pegawai.profile')"
-    class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 transition hover:bg-slate-50"
-    @click="profileOpen = false"
->
-    <UserCircle
-        class="h-5 w-5"
-    />
+                                :href="route('pegawai.profile')"
+                                class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 transition hover:bg-slate-50"
+                                @click="profileOpen = false"
+                            >
+                                <UserCircle
+                                    class="h-5 w-5"
+                                />
 
-    Profile Saya
-</Link>
+                                Profile Saya
+                            </Link>
 
 
                             <div
@@ -481,20 +472,46 @@ const isActive = (routeName) => {
             </header>
 
 
-            <!-- ========================= -->
             <!-- CONTENT -->
-            <!-- ========================= -->
 
-            <main class="p-8">
+            <main class="p-4 pb-28 sm:p-6 sm:pb-28 lg:p-8 lg:pb-8">
                 <slot />
             </main>
 
         </div>
-        
+
+
+        <!-- ================================================= -->
+        <!-- MENU BAWAH (khusus HP & tablet, desktop pakai sidebar) -->
+        <!-- ================================================= -->
+
+        <nav
+            class="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgba(0,0,0,0.06)] lg:hidden"
+            aria-label="Menu utama"
+        >
+            <div class="mx-auto grid max-w-xl grid-cols-5">
+                <Link
+                    v-for="item in menuItems"
+                    :key="item.name"
+                    :href="route(item.route)"
+                    class="flex min-h-[56px] flex-col items-center justify-center gap-1 px-1 py-2 text-[11px] font-medium transition"
+                    :class="isActive(item.route) ? 'text-[#13aa9c]' : 'text-slate-400'"
+                >
+                    <component
+                        :is="item.icon"
+                        class="h-6 w-6"
+                        :stroke-width="isActive(item.route) ? 2.2 : 1.7"
+                    />
+                    <span class="w-full truncate text-center">{{ item.short }}</span>
+                </Link>
+            </div>
+        </nav>
+
+
         <!-- ================================================= -->
         <!-- TOAST / FLASH MESSAGES -->
         <!-- ================================================= -->
-        <div v-if="page.props.flash?.success" class="fixed bottom-6 right-6 z-50 rounded-xl bg-teal-500 px-6 py-4 text-white shadow-xl flex items-center gap-3">
+        <div v-if="page.props.flash?.success" class="fixed bottom-24 left-4 right-4 z-[60] flex items-center gap-3 rounded-xl bg-teal-500 px-5 py-4 text-white shadow-xl sm:left-auto sm:right-6 lg:bottom-6">
             <CheckCircleIcon class="h-6 w-6 text-white" />
             <div>
                 <p class="font-bold text-sm">Berhasil</p>

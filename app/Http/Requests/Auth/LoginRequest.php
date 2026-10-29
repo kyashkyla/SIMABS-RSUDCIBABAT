@@ -71,6 +71,18 @@ class LoginRequest extends FormRequest
                 ]);
             }
 
+            // Password sudah benar, tapi akun pegawai dinonaktifkan oleh
+            // admin (employees.status = 'Nonaktif') -> tolak login.
+            // Dicek SETELAH password valid supaya status akun tidak bisa
+            // ditebak oleh orang yang tidak tahu passwordnya.
+            if ($employee->status !== 'Aktif') {
+                RateLimiter::clear($this->throttleKey());
+
+                throw ValidationException::withMessages([
+                    'nip' => 'Akun Anda tidak aktif, hubungi administrator.',
+                ]);
+            }
+
             Auth::login($employee->user, $this->boolean('remember'));
 
             RateLimiter::clear($this->throttleKey());

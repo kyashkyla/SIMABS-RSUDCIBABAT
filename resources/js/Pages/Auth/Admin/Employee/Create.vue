@@ -1,6 +1,7 @@
 <script setup>
 import { Head, Link, useForm } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
+import { departmentGroups, positionSuggestions } from '@/lib/hospitalUnits'
 
 import { ref } from 'vue'
 
@@ -458,12 +459,20 @@ const submitForm = () => {
                         <input
                             v-model="form.position"
                             type="text"
-                            placeholder="Contoh: Perawat"
+                            list="saran-jabatan"
+                            placeholder="Contoh: Dokter Gigi"
                             class="w-full rounded-xl border border-slate-200
                                    px-4 py-3
                                    focus:outline-none
                                    focus:ring-2 focus:ring-emerald-500"
                         />
+
+                        <datalist id="saran-jabatan">
+                            <option
+                                v-for="jabatan in positionSuggestions"
+                                :key="jabatan"
+                                :value="jabatan" />
+                        </datalist>
 
                         <p
                             v-if="form.errors.position"
@@ -495,25 +504,21 @@ const submitForm = () => {
                                 Pilih departemen
                             </option>
 
-                            <option value="IGD">
-                                IGD
-                            </option>
+                            <optgroup
+                                v-for="group in departmentGroups"
+                                :key="group.label"
+                                :label="group.label">
 
-                            <option value="Radiologi">
-                                Radiologi
-                            </option>
+                                <option
+                                    v-for="dept in group.items"
+                                    :key="dept"
+                                    :value="dept">
 
-                            <option value="Farmasi">
-                                Farmasi
-                            </option>
+                                    {{ dept }}
 
-                            <option value="Rawat Inap">
-                                Rawat Inap
-                            </option>
+                                </option>
 
-                            <option value="Administrasi">
-                                Administrasi
-                            </option>
+                            </optgroup>
 
                         </select>
 

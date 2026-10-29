@@ -1,14 +1,15 @@
 <script setup>
 import PegawaiLayout from './PegawaiLayout.vue'
 import { Link } from '@inertiajs/vue3'
-import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { computed, reactive, ref, onMounted, onUnmounted } from 'vue'
 
 import {
     CheckCircleIcon,
     ClockIcon,
     CalendarDaysIcon,
     MapPinIcon,
-    ChevronRightIcon,
+    ArrowPathIcon,
+    ExclamationTriangleIcon,
 } from '@heroicons/vue/24/outline'
 
 const props = defineProps({
@@ -136,6 +137,15 @@ const now = ref(new Date())
 let clockInterval = null
 
 // Format: "13.32"
+// Shift pegawai (Pagi / Siang / Malam) + rentang jamnya, dari data pegawai.
+const shiftLabel = computed(() => props.employee?.shift || null)
+
+const shiftRange = computed(() => {
+    const d = props.employee?.shift_details
+    if (!d?.start || !d?.end) return ''
+    return `${d.start} - ${d.end}${d.overnight ? ' (+1 hari)' : ''}`
+})
+
 const jamSekarang = computed(() => {
     return now.value
         .toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
@@ -160,18 +170,183 @@ const bulanTahunSekarang = computed(() => {
     })
 })
 
+// =====================================================
+// DETEKSI LOKASI (GPS asli perangkat -> validasi radius di server)
+// =====================================================
+//
+// Sebelumnya kartu lokasi di dashboard ini cuma teks statis. Sekarang:
+// 1. Ambil koordinat GPS asli dari browser.
+// 2. Kirim ke endpoint validasi yang SAMA dengan halaman absensi
+//    (pegawai.absensi.validasi-lokasi), jadi hasilnya selalu konsisten.
+// 3. Alamat diambil dari reverse geocoding (server), jadi berubah otomatis
+//    mengikuti posisi pegawai saat dashboard dibuka.
+// Peta sengaja tidak ditampilkan di dashboard.
+
+const lokasi = reactive({
+    status: 'checking', // checking | valid | invalid | error
+    address: '',
+    distance: null,
+    message: '',
+})
+
+let sedangMendeteksi = false
+let terakhirDicek = 0
+
+const formatJarak = (meter) => {
+    if (meter === null || meter === undefined) return ''
+    if (meter >= 1000) return `${(meter / 1000).toFixed(1).replace('.', ',')} km`
+    return `${meter} m`
+}
+
+const ambilPosisi = () => {
+    return new Promise((resolve, reject) => {
+        if (!window.isSecureContext) {
+            reject(new Error('GPS hanya bisa dipakai lewat HTTPS (atau localhost).'))
+            return
+        }
+
+        if (!('geolocation' in navigator)) {
+            reject(new Error('Perangkat/browser ini tidak mendukung GPS.'))
+            return
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => resolve({
+                lat: position.coords.latitude,
+                lng: position.coords.longitude,
+            }),
+            (err) => {
+                if (err.code === err.PERMISSION_DENIED) {
+                    reject(new Error('Izin lokasi ditolak. Aktifkan izin lokasi untuk browser ini.'))
+                } else if (err.code === err.POSITION_UNAVAILABLE) {
+                    reject(new Error('Posisi GPS tidak dapat ditentukan.'))
+                } else if (err.code === err.TIMEOUT) {
+                    reject(new Error('Waktu mendeteksi lokasi habis. Coba lagi.'))
+                } else {
+                    reject(new Error('Gagal mendeteksi lokasi.'))
+                }
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 15000,
+                maximumAge: 0,
+            }
+        )
+    })
+}
+
+const deteksiLokasi = async () => {
+    if (sedangMendeteksi) return
+
+    sedangMendeteksi = true
+    lokasi.status = 'checking'
+    lokasi.message = ''
+
+    try {
+        const { lat, lng } = await ambilPosisi()
+
+        // Dijalankan paralel. allSettled supaya kalau alamat gagal dimuat,
+        // status "di area / di luar area" tetap tampil.
+        const [validasi, alamat] = await Promise.allSettled([
+            window.axios.post(route('pegawai.absensi.validasi-lokasi'), {
+                latitude: lat,
+                longitude: lng,
+            }),
+            window.axios.post(route('pegawai.dashboard.alamat'), {
+                latitude: lat,
+                longitude: lng,
+            }),
+        ])
+
+        lokasi.address =
+            alamat.status === 'fulfilled' && alamat.value.data?.address
+                ? alamat.value.data.address
+                : `Koordinat ${lat.toFixed(5)}, ${lng.toFixed(5)}`
+
+        if (validasi.status === 'fulfilled') {
+            const hasil = validasi.value.data
+
+            lokasi.distance = hasil.distance_meters
+            lokasi.status = hasil.valid ? 'valid' : 'invalid'
+        } else {
+            lokasi.status = 'error'
+            lokasi.message = validasi.reason?.response?.status === 404
+                ? 'Lokasi kantor belum diatur oleh admin.'
+                : 'Gagal memvalidasi lokasi. Coba lagi.'
+        }
+    } catch (err) {
+        lokasi.status = 'error'
+        lokasi.message = err.message || 'Gagal mendeteksi lokasi.'
+    } finally {
+        terakhirDicek = Date.now()
+        sedangMendeteksi = false
+    }
+}
+
+// Teks yang ditampilkan di kartu lokasi, tergantung statusnya.
+const lokasiTampil = computed(() => {
+    if (lokasi.status === 'checking') {
+        return {
+            title: 'Mendeteksi lokasi...',
+            sub: 'Izinkan akses lokasi pada browser Anda',
+            pill: 'Memeriksa',
+            pillClass: 'checking',
+        }
+    }
+
+    if (lokasi.status === 'error') {
+        return {
+            title: lokasi.message,
+            sub: '',
+            pill: 'Tidak Terdeteksi',
+            pillClass: 'error',
+        }
+    }
+
+    // Yang ditampilkan selalu lokasi pegawai saat ini (alamat dari GPS),
+    // bukan nama titik kantor di pengaturan.
+    if (lokasi.status === 'valid') {
+        return {
+            title: lokasi.address,
+            sub: 'Dalam radius lokasi absensi',
+            pill: 'Di Area RS',
+            pillClass: 'in',
+        }
+    }
+
+    return {
+        title: lokasi.address,
+        sub: `Berjarak ${formatJarak(lokasi.distance)} dari lokasi absensi terdekat`,
+        pill: 'Di Luar Area RS',
+        pillClass: 'out',
+    }
+})
+
+// Cek ulang otomatis kalau tab dibuka kembali (mis. pegawai pindah tempat).
+const saatTabKembali = () => {
+    if (document.visibilityState === 'visible' && Date.now() - terakhirDicek > 30000) {
+        deteksiLokasi()
+    }
+}
+
 onMounted(() => {
     // Update tiap detik supaya jam berjalan real-time, tanggal otomatis
     // ikut berganti begitu lewat tengah malam
     clockInterval = setInterval(() => {
         now.value = new Date()
     }, 1000)
+
+    // Lokasi & alamat dideteksi setiap dashboard dibuka
+    deteksiLokasi()
+    document.addEventListener('visibilitychange', saatTabKembali)
 })
 
 onUnmounted(() => {
     if (clockInterval) {
         clearInterval(clockInterval)
     }
+
+    document.removeEventListener('visibilitychange', saatTabKembali)
 })
 </script>
 
@@ -188,6 +363,17 @@ onUnmounted(() => {
                     <p>
                         Semangat bekerja untuk kesehatan masyarakat Cimahi
                     </p>
+
+                    <!-- Badge shift pegawai -->
+                    <div
+                        v-if="shiftLabel"
+                        class="shift-badge"
+                        :class="`shift-${shiftLabel.toLowerCase()}`"
+                    >
+                        <ClockIcon />
+                        <strong>Shift {{ shiftLabel }}</strong>
+                        <span>{{ shiftRange }}</span>
+                    </div>
                 </div>
 
                 <div class="current-time">
@@ -200,22 +386,33 @@ onUnmounted(() => {
             <!-- ============================= -->
             <!-- LOCATION -->
             <!-- ============================= -->
-            <div class="location-card">
+            <div class="location-card" :class="`is-${lokasi.status}`">
 
                 <div class="location-icon">
-                    <MapPinIcon />
+                    <ExclamationTriangleIcon v-if="lokasi.status === 'error'" />
+                    <MapPinIcon v-else />
                 </div>
 
                 <div class="location-info">
                     <span>Lokasi terdeteksi</span>
 
-                    <strong>
-                        RSUD Cibabat, Jl. Dustira No. 1, Cimahi
-                    </strong>
+                    <strong>{{ lokasiTampil.title }}</strong>
+
+                    <small v-if="lokasiTampil.sub">{{ lokasiTampil.sub }}</small>
                 </div>
 
-                <div class="location-status">
-                    Di Area RS
+                <button
+                    type="button"
+                    class="location-refresh"
+                    title="Perbarui lokasi"
+                    :disabled="lokasi.status === 'checking'"
+                    @click="deteksiLokasi"
+                >
+                    <ArrowPathIcon :class="{ spin: lokasi.status === 'checking' }" />
+                </button>
+
+                <div class="location-status" :class="lokasiTampil.pillClass">
+                    {{ lokasiTampil.pill }}
                 </div>
 
             </div>
@@ -332,10 +529,10 @@ onUnmounted(() => {
                             <ClockIcon />
                             <span>{{ todayAttendance?.check_in_at ? 'Absen Pulang' : 'Mulai Absensi' }}</span>
                         </Link>
-                        
-                        <div v-else class="p-4 mb-4 bg-emerald-50 text-emerald-700 text-sm rounded-xl font-medium border border-emerald-100 flex items-center gap-3">
-                            <CheckCircleIcon class="w-5 h-5" />
-                            Anda sudah menyelesaikan absensi hari ini.
+
+                        <div v-else class="attendance-done">
+                            <CheckCircleIcon />
+                            <span>Anda sudah menyelesaikan absensi hari ini.</span>
                         </div>
 
 
@@ -551,12 +748,21 @@ onUnmounted(() => {
                         <div class="verification">
 
                             <strong>
-                                <span class="verification-dot"></span>
-                                Wajah Terverifikasi
+                                <span
+                                    class="verification-dot"
+                                    :class="{ off: !employee?.face_verified }"
+                                ></span>
+                                {{ employee?.face_verified ? 'Wajah Terverifikasi' : 'Wajah Belum Terdaftar' }}
                             </strong>
 
-                            <span>
-                                Diperbarui 30 Jun 2026
+                            <span v-if="!employee?.face_verified">
+                                Hubungi admin untuk mendaftarkan foto wajah
+                            </span>
+                            <span v-else-if="employee?.face_updated_label">
+                                Diperbarui {{ employee.face_updated_label }}
+                            </span>
+                            <span v-else>
+                                Foto wajah terdaftar
                             </span>
 
                         </div>
@@ -619,6 +825,54 @@ onUnmounted(() => {
     font-size: 14px;
 }
 
+/* Badge shift di bawah sapaan */
+.shift-badge {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+
+    margin-top: 12px;
+    padding: 6px 12px;
+
+    border-radius: 999px;
+
+    background: #e8f8f5;
+    color: #12877a;
+
+    font-size: 13px;
+}
+
+.shift-badge svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+.shift-badge strong {
+    font-weight: 700;
+}
+
+.shift-badge span {
+    font-weight: 500;
+    opacity: .85;
+}
+
+.shift-pagi {
+    background: #fff6dc;
+    color: #a86f00;
+}
+
+.shift-siang {
+    background: #e8f8f5;
+    color: #12877a;
+}
+
+.shift-malam {
+    background: #e9edff;
+    color: #3b4fb8;
+}
+
 .current-time {
     display: flex;
 
@@ -674,6 +928,8 @@ onUnmounted(() => {
     align-items: center;
     justify-content: center;
 
+    flex-shrink: 0;
+
     width: 46px;
     height: 46px;
 
@@ -710,8 +966,52 @@ onUnmounted(() => {
     font-size: 14px;
 }
 
-.location-status {
+.location-info {
+    min-width: 0;
+}
+
+.location-info small {
+    color: #71888b;
+
+    font-size: 12px;
+}
+
+.location-refresh {
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    width: 34px;
+    height: 34px;
+
     margin-left: auto;
+    margin-right: 12px;
+
+    flex-shrink: 0;
+
+    border: none;
+    border-radius: 10px;
+
+    background: white;
+
+    color: #16b29f;
+
+    cursor: pointer;
+}
+
+.location-refresh:disabled {
+    cursor: default;
+    opacity: 0.6;
+}
+
+.location-refresh svg {
+    width: 18px;
+    height: 18px;
+}
+
+.location-status {
+    flex-shrink: 0;
 
     padding: 7px 14px;
 
@@ -724,6 +1024,51 @@ onUnmounted(() => {
     font-size: 12px;
 
     font-weight: 600;
+
+    white-space: nowrap;
+}
+
+.location-status.checking {
+    background: #e8eef0;
+    color: #6f8387;
+}
+
+.location-status.out {
+    background: #fde8e6;
+    color: #d9483b;
+}
+
+.location-status.error {
+    background: #fff1d6;
+    color: #d98a0b;
+}
+
+.location-card.is-invalid {
+    border-color: #f6dcd7;
+    background: #fff7f5;
+}
+
+.location-card.is-invalid .location-icon {
+    color: #d9483b;
+}
+
+.location-card.is-error {
+    border-color: #f5e6c4;
+    background: #fffaf0;
+}
+
+.location-card.is-error .location-icon {
+    color: #d98a0b;
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 
@@ -779,82 +1124,78 @@ onUnmounted(() => {
     justify-content: space-between;
 }
 
-.stat-card-header > span {
-    font-size: 12px;
+.stat-card-header span {
+    font-size: 13px;
+    color: #6f8387;
 }
 
 .stat-icon {
     display: flex;
-
     align-items: center;
     justify-content: center;
 
     width: 38px;
     height: 38px;
 
-    border-radius: 12px;
-
-    background: #effbf8;
-
-    color: #16b3a2;
+    border-radius: 11px;
+    background: #e8f7f4;
+    color: #16b29f;
 }
 
 .stat-icon svg {
-    width: 19px;
+    width: 20px;
+    height: 20px;
 }
 
 .white-icon {
-    background: rgba(255,255,255,.16);
-
+    background: rgba(255, 255, 255, 0.22);
     color: white;
+}
+
+.status-card .stat-card-header span,
+.stat-card.status-card p {
+    /* .stat-card.status-card p sengaja lebih spesifik dari `.stat-card p`
+       (abu-abu) supaya teks di kartu hijau ini tidak ketimpa jadi
+       abu-abu dan tak terbaca. */
+    color: rgba(255, 255, 255, 0.95);
 }
 
 .stat-main {
     margin-top: 18px;
 
-    font-size: 29px;
-
-    font-weight: 600;
+    font-size: 28px;
+    font-weight: 700;
 }
 
 .stat-value {
-    margin-top: 17px;
-
-    color: #18aa9b;
+    margin-top: 18px;
 
     font-size: 28px;
+    font-weight: 700;
 
-    line-height: 1;
-
-    font-weight: 500;
+    color: #19343d;
 }
 
 .stat-value.empty {
-    color: #7b8689;
+    color: #b5c2c5;
 }
 
 .stat-card p {
     margin: 8px 0 0;
 
-    color: #7b8c90;
-
     font-size: 12px;
-}
-
-.status-card p {
-    color: rgba(255,255,255,.75);
+    color: #84969a;
 }
 
 
 /* ========================================= */
-/* CONTENT */
+/* CONTENT GRID */
 /* ========================================= */
 
 .content-grid {
     display: grid;
 
-    grid-template-columns:
-        0.75fr 1.55fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
 
     gap: 20px;
 }
@@ -862,35 +1203,31 @@ onUnmounted(() => {
 .left-column,
 .right-column {
     display: flex;
-
     flex-direction: column;
 
     gap: 20px;
 }
 
 .card {
-    padding: 22px;
+    padding: 24px;
 
     box-sizing: border-box;
 
     border: 1px solid #e0eceb;
-
     border-radius: 17px;
 
     background: white;
 
-    box-shadow:
-        0 3px 12px rgba(36, 108, 101, 0.04);
+    box-shadow: 0 3px 12px rgba(36, 108, 101, 0.04);
 }
 
 .card h3 {
-    margin: 0 0 17px;
+    margin: 0 0 18px;
 
-    color: #294149;
-
-    font-size: 15px;
-
+    font-size: 17px;
     font-weight: 700;
+
+    color: #19343d;
 }
 
 
@@ -900,96 +1237,100 @@ onUnmounted(() => {
 
 .attendance-button {
     display: flex;
-
     align-items: center;
     justify-content: center;
+    gap: 10px;
 
     width: 100%;
-    height: 45px;
+    padding: 15px;
 
-    gap: 8px;
+    box-sizing: border-box;
 
-    border-radius: 11px;
+    border-radius: 13px;
 
-    background:
-        linear-gradient(
-            90deg,
-            #18b7a4,
-            #20c76b
-        );
+    background: linear-gradient(135deg, #18b6a2, #1fc76c);
 
     color: white;
-
-    font-size: 13px;
-
+    font-size: 15px;
     font-weight: 600;
-
     text-decoration: none;
 
-    transition: .2s ease;
+    transition: opacity 0.2s, transform 0.2s;
 }
 
 .attendance-button:hover {
+    opacity: 0.92;
     transform: translateY(-1px);
-
-    opacity: .93;
 }
 
 .attendance-button svg {
-    width: 18px;
+    width: 20px;
+    height: 20px;
+}
+
+.attendance-done {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    padding: 16px;
+
+    box-sizing: border-box;
+
+    border: 1px solid #d1f2e0;
+    border-radius: 13px;
+
+    background: #ecfdf5;
+
+    color: #047857;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.attendance-done svg {
+    flex-shrink: 0;
+
+    width: 20px;
+    height: 20px;
 }
 
 .quick-buttons {
     display: grid;
+    grid-template-columns: repeat(2, 1fr);
 
-    grid-template-columns:
-        1fr 1fr;
+    gap: 12px;
 
-    gap: 8px;
-
-    margin-top: 9px;
+    margin-top: 14px;
 }
 
 .quick-button {
-    display: flex;
+    padding: 12px;
 
-    align-items: center;
-    justify-content: center;
+    border: 1px solid #dcefeb;
+    border-radius: 12px;
 
-    height: 38px;
+    background: #f6fbfa;
 
-    border: 1px solid #e0ebea;
-
-    border-radius: 9px;
-
-    background: white;
-
-    color: #738083;
-
-    font-size: 12px;
-
+    color: #29434a;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: center;
     text-decoration: none;
 
-    cursor: pointer;
-
-    transition: all .2s ease;
+    transition: background 0.2s;
 }
 
 .quick-button:hover {
-    background: #effaf7;
-
-    border-color: #20b5a2;
-
-    color: #20a998;
+    background: #e8f7f4;
 }
 
 
 /* ========================================= */
-/* RINGKASAN */
+/* RINGKASAN BULAN */
 /* ========================================= */
 
 .summary-item {
-    margin-bottom: 15px;
+    margin-bottom: 18px;
 }
 
 .summary-item:last-child {
@@ -998,73 +1339,52 @@ onUnmounted(() => {
 
 .summary-label {
     display: flex;
-
-    align-items: center;
     justify-content: space-between;
 
-    margin-bottom: 6px;
+    margin-bottom: 8px;
 
-    color: #78888c;
-
-    font-size: 12px;
+    font-size: 13px;
+    color: #6f8387;
 }
 
 .summary-label strong {
-    color: #53656a;
-
-    font-weight: 500;
+    color: #19343d;
 }
 
 .progress {
-    width: 100%;
-
-    height: 6px;
+    height: 8px;
 
     overflow: hidden;
 
     border-radius: 20px;
 
-    background: #edf5f4;
+    background: #eef4f3;
 }
 
 .progress-fill {
     height: 100%;
 
     border-radius: 20px;
+
+    transition: width 0.4s ease;
 }
 
-.progress-fill.hadir {
-    background: #20c66b;
-}
-
-.progress-fill.terlambat {
-    background: #f3a914;
-}
-
-.progress-fill.izin {
-    background: #18b4a3;
-}
-
-.progress-fill.tidak-hadir {
-    background: #d9e3e3;
-}
+.progress-fill.hadir { background: #1fc76c; }
+.progress-fill.terlambat { background: #f5a623; }
+.progress-fill.izin { background: #3b9ae1; }
+.progress-fill.tidak-hadir { background: #e5534b; }
 
 
 /* ========================================= */
-/* ACTIVITY */
+/* AKTIVITAS TERKINI */
 /* ========================================= */
-
-.activity-card {
-    min-height: 330px;
-}
 
 .card-title-row {
     display: flex;
-
     align-items: center;
     justify-content: space-between;
 
-    margin-bottom: 10px;
+    margin-bottom: 18px;
 }
 
 .card-title-row h3 {
@@ -1072,141 +1392,105 @@ onUnmounted(() => {
 }
 
 .see-all {
-    color: #1eaa9d;
-
-    font-size: 12px;
-
+    color: #18ae9e;
+    font-size: 13px;
     font-weight: 600;
-
     text-decoration: none;
-}
-
-.see-all:hover {
-    text-decoration: underline;
 }
 
 .activity-item {
     display: flex;
-
     align-items: center;
+    gap: 14px;
 
-    min-height: 66px;
+    padding: 14px 0;
 
-    padding: 8px 0;
-
-    border-bottom: 1px solid #edf2f2;
+    border-bottom: 1px solid #eef4f3;
 }
 
-.activity-item:last-child {
+.activity-item:last-of-type {
     border-bottom: none;
 }
 
 .activity-icon {
     display: flex;
-
     align-items: center;
     justify-content: center;
 
-    width: 38px;
-    height: 38px;
-
     flex-shrink: 0;
 
-    margin-right: 12px;
+    width: 40px;
+    height: 40px;
 
-    border-radius: 11px;
+    border-radius: 12px;
 }
 
 .activity-icon svg {
-    width: 18px;
+    width: 20px;
+    height: 20px;
 }
 
 .activity-icon.success {
-    background: #dcf8e6;
-
-    color: #38bf76;
+    background: #d9f8e5;
+    color: #2fa968;
 }
 
 .activity-icon.warning {
-    background: #fff2c9;
-
-    color: #e9ad18;
+    background: #fff1d6;
+    color: #d98a0b;
 }
 
 .activity-info {
     display: flex;
-
     flex-direction: column;
 
     gap: 3px;
-
-    min-width: 0;
 }
 
 .activity-info strong {
-    color: #34474d;
-
-    font-size: 12px;
+    font-size: 14px;
+    color: #19343d;
 }
 
 .activity-info span {
-    color: #899598;
-
-    font-size: 11px;
+    font-size: 12px;
+    color: #84969a;
 }
 
 .activity-time {
     display: flex;
-
     flex-direction: column;
-
     align-items: flex-end;
+
+    gap: 5px;
 
     margin-left: auto;
 }
 
 .activity-time strong {
-    color: #33464d;
-
-    font-size: 13px;
+    font-size: 14px;
+    color: #19343d;
 }
 
 .badge {
-    margin-top: 4px;
-
-    padding: 3px 8px;
+    padding: 3px 10px;
 
     border-radius: 20px;
 
-    font-size: 10px;
+    font-size: 11px;
+    font-weight: 600;
 }
 
-.hadir-badge {
-    background: #dcf8e6;
-
-    color: #38b970;
-}
-
-.terlambat-badge {
-    background: #fff0bf;
-
-    color: #d99a13;
-}
-
-.izin-badge {
-    background: #dbeeff;
-
-    color: #1c7ed6;
-}
+.hadir-badge { background: #d9f8e5; color: #2fa968; }
+.terlambat-badge { background: #fff1d6; color: #d98a0b; }
+.izin-badge { background: #e1f0fc; color: #3b9ae1; }
 
 .empty-activity {
-    padding: 24px 0;
+    margin: 10px 0 0;
 
     text-align: center;
-
-    color: #a3adb0;
-
-    font-size: 12px;
+    font-size: 13px;
+    color: #9aaaad;
 }
 
 
@@ -1216,136 +1500,123 @@ onUnmounted(() => {
 
 .profile-card {
     display: flex;
-
     align-items: center;
+    gap: 16px;
 
-    padding: 20px;
+    padding: 22px;
 
-    border: 1px solid #e0eceb;
+    box-sizing: border-box;
 
     border-radius: 17px;
 
-    background: white;
+    background: linear-gradient(135deg, #18b6a2, #1fc76c);
 
-    box-shadow:
-        0 3px 12px rgba(36, 108, 101, 0.04);
+    color: white;
 }
 
 .profile-photo {
-    margin-right: 13px;
+    flex-shrink: 0;
+
+    width: 64px;
+    height: 64px;
+}
+
+.profile-photo-img {
+    width: 100%;
+    height: 100%;
+
+    object-fit: cover;
+
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.5);
 }
 
 .profile-placeholder {
     display: flex;
-
     align-items: center;
     justify-content: center;
 
-    width: 55px;
-    height: 55px;
+    width: 100%;
+    height: 100%;
 
-    border-radius: 14px;
+    border-radius: 50%;
 
-    background:
-        linear-gradient(
-            135deg,
-            #d8f5ef,
-            #bcebdc
-        );
+    background: rgba(255, 255, 255, 0.25);
 
-    color: #16a993;
-
-    font-size: 17px;
-
+    font-size: 22px;
     font-weight: 700;
-}
-
-.profile-photo-img {
-    display: block;
-
-    width: 55px;
-    height: 55px;
-
-    border-radius: 14px;
-
-    object-fit: cover;
 }
 
 .profile-info {
     display: flex;
-
     flex-direction: column;
 
     gap: 4px;
 }
 
-.profile-info > strong {
-    color: #33464d;
-
-    font-size: 13px;
+.profile-info strong {
+    font-size: 16px;
 }
 
 .profile-info > span {
-    color: #8a9699;
-
-    font-size: 11px;
+    font-size: 12px;
+    opacity: 0.9;
 }
 
 .profile-tags {
     display: flex;
-
+    flex-wrap: wrap;
     gap: 6px;
 
-    margin-top: 3px;
+    margin-top: 4px;
 }
 
 .profile-tags span {
-    padding: 4px 8px;
+    padding: 3px 10px;
 
     border-radius: 20px;
 
-    background: #e9faf6;
-
-    color: #25ae9e;
-
-    font-size: 10px;
-}
-
-.verification {
-    display: flex;
-
-    flex-direction: column;
-
-    align-items: flex-end;
-
-    margin-left: auto;
-
-    gap: 5px;
-}
-
-.verification strong {
-    color: #32b96d;
+    background: rgba(255, 255, 255, 0.22);
 
     font-size: 11px;
 }
 
-.verification span:last-child {
-    color: #8a9699;
+.verification {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
 
-    font-size: 10px;
+    gap: 4px;
+
+    margin-left: auto;
+
+    text-align: right;
+}
+
+.verification strong {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    font-size: 12px;
+}
+
+.verification span {
+    font-size: 11px;
+    opacity: 0.85;
 }
 
 .verification-dot {
-    display: inline-block;
-
-    width: 7px;
-    height: 7px;
-
-    margin-right: 4px;
+    width: 8px;
+    height: 8px;
 
     border-radius: 50%;
 
-    background: #27bd6a;
+    background: white;
+}
+
+.verification-dot.off {
+    background: rgba(255, 255, 255, 0.45);
 }
 
 
@@ -1353,56 +1624,139 @@ onUnmounted(() => {
 /* RESPONSIVE */
 /* ========================================= */
 
-@media (max-width: 1100px) {
-
+@media (max-width: 1024px) {
     .stats-grid {
-        grid-template-columns:
-            repeat(2, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .content-grid {
         grid-template-columns: 1fr;
     }
-
 }
 
-
-@media (max-width: 700px) {
-
+@media (max-width: 640px) {
     .dashboard-page {
-        padding: 25px 18px 40px;
+        padding: 24px 4px 40px;
+    }
+
+    /* Kartu lokasi: baris 1 = ikon + alamat + tombol refresh,
+       baris 2 = status (Di Area RS). Alamat jadi lebar, tidak sempit. */
+    .location-card {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: start;
+        column-gap: 12px;
+        row-gap: 12px;
+
+        padding: 16px;
+    }
+
+    .location-icon {
+        grid-column: 1;
+        grid-row: 1;
+
+        margin-right: 0;
+    }
+
+    .location-info {
+        grid-column: 2;
+        grid-row: 1;
+
+        padding-top: 1px;
+    }
+
+    .location-info strong {
+        font-size: 15px;
+        line-height: 1.35;
+    }
+
+    .location-refresh {
+        grid-column: 3;
+        grid-row: 1;
+
+        margin: 0;
+    }
+
+    .location-status {
+        grid-column: 2 / -1;
+        grid-row: 2;
+
+        justify-self: start;
     }
 
     .dashboard-header {
         flex-direction: column;
-
-        gap: 15px;
+        gap: 14px;
     }
 
     .current-time {
         align-items: flex-start;
     }
 
-    .location-card {
-        align-items: flex-start;
-    }
-
-    .location-status {
-        display: none;
-    }
-
+    /* Kartu statistik: 2 kolom kecil-kecil, seperti tombol Aksi Cepat.
+       Desktop tidak terpengaruh (aturan ini hanya <= 640px). */
     .stats-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+
+        margin-bottom: 18px;
+    }
+
+    .stat-card {
+        min-height: 0;
+        padding: 12px;
+
+        border-radius: 14px;
+    }
+
+    .stat-card-header {
+        align-items: flex-start;
+        gap: 6px;
+    }
+
+    .stat-card-header span {
+        font-size: 11px;
+        line-height: 1.3;
+    }
+
+    .stat-icon {
+        width: 28px;
+        height: 28px;
+
+        flex-shrink: 0;
+
+        border-radius: 9px;
+    }
+
+    .stat-icon svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .stat-main,
+    .stat-value {
+        margin-top: 10px;
+
+        font-size: 19px;
+        line-height: 1.2;
+    }
+
+    .stat-card p {
+        margin-top: 4px;
+
+        font-size: 11px;
+        line-height: 1.35;
     }
 
     .profile-card {
-        align-items: flex-start;
+        flex-wrap: wrap;
     }
 
     .verification {
-        display: none;
+        align-items: flex-start;
+        margin-left: 0;
+        text-align: left;
     }
-
 }
 
 </style>

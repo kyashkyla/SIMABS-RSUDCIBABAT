@@ -2,6 +2,7 @@
 import { reactive, ref } from 'vue'
 import { router } from '@inertiajs/vue3'
 import LocationMapPicker from './LocationMapPicker.vue'
+import { confirmDialog } from '@/lib/confirm'
 import {
     MapPinIcon,
     ChevronDownIcon,
@@ -86,14 +87,16 @@ const toggleActive = () => {
     )
 }
 
-const destroyLocation = () => {
-    if (
-        !confirm(
-            `Hapus lokasi "${props.location.name}"? Pegawai tidak akan bisa absen dari titik ini lagi.`
-        )
-    ) {
-        return
-    }
+const destroyLocation = async () => {
+    const ok = await confirmDialog({
+        title: 'Hapus Lokasi?',
+        message: `Lokasi "${props.location.name}" akan dihapus. Pegawai tidak akan bisa absen dari titik ini lagi.`,
+        confirmText: 'Ya, Hapus',
+        cancelText: 'Batal',
+        variant: 'danger',
+    })
+
+    if (!ok) return
 
     router.delete(`/admin/pengaturan/lokasi/${props.location.id}`, {
         preserveScroll: true,

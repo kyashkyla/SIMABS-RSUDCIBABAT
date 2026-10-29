@@ -1,6 +1,7 @@
 <script setup>
 import { Head, Link, useForm } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
+import { departmentGroups, departmentList, positionSuggestions } from '@/lib/hospitalUnits'
 
 import { ref } from 'vue'
 
@@ -459,12 +460,20 @@ const submit = () => {
                         <input
                             v-model="form.position"
                             type="text"
+                            list="saran-jabatan"
                             placeholder="Masukkan jabatan"
                             class="w-full rounded-xl border border-slate-300
                                    px-4 py-3
                                    focus:outline-none
                                    focus:ring-2 focus:ring-emerald-500"
                         />
+
+                        <datalist id="saran-jabatan">
+                            <option
+                                v-for="jabatan in positionSuggestions"
+                                :key="jabatan"
+                                :value="jabatan" />
+                        </datalist>
 
                         <p
                             v-if="form.errors.position"
@@ -496,32 +505,28 @@ const submit = () => {
                                 Pilih departemen
                             </option>
 
-                            <option value="IGD">
-                                IGD
-                            </option>
+                            <optgroup
+                                v-for="group in departmentGroups"
+                                :key="group.label"
+                                :label="group.label">
 
-                            <option value="Radiologi">
-                                Radiologi
-                            </option>
+                                <option
+                                    v-for="dept in group.items"
+                                    :key="dept"
+                                    :value="dept">
 
-                            <option value="Farmasi">
-                                Farmasi
-                            </option>
+                                    {{ dept }}
 
-                            <option value="Rawat Inap">
-                                Rawat Inap
-                            </option>
+                                </option>
 
-                            <option value="Administrasi">
-                                Administrasi
-                            </option>
+                            </optgroup>
 
                             <!-- Jaga-jaga: kalau departemen pegawai ini tersimpan
                                  dengan nilai lama yang sudah tidak ada di daftar
                                  di atas, tetap tampilkan sebagai pilihan supaya
                                  datanya tidak hilang / tidak dianggap kosong. -->
                             <option
-                                v-if="form.department && !['IGD','Radiologi','Farmasi','Rawat Inap','Administrasi'].includes(form.department)"
+                                v-if="form.department && !departmentList.includes(form.department)"
                                 :value="form.department">
 
                                 {{ form.department }}

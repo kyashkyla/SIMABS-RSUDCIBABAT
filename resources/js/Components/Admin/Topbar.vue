@@ -6,7 +6,9 @@ import {
     BellIcon,
     ChevronDownIcon,
     UserCircleIcon,
+    Bars3Icon,
 } from '@heroicons/vue/24/outline'
+import { mobileNavOpen } from '@/lib/adminNav'
 
 const page = usePage()
 
@@ -67,29 +69,43 @@ onUnmounted(() => {
 
 <template>
 
-    <header class="bg-white border-b border-slate-200 shadow-sm">
+    <header class="relative z-30 bg-white border-b border-slate-200 shadow-sm">
 
         <div
-            class="h-24 px-8 flex items-center justify-between">
+            class="h-16 px-4 sm:h-24 sm:px-8 flex items-center justify-between gap-3">
 
             <!-- ================= LEFT ================= -->
 
-            <div>
+            <div class="flex min-w-0 items-center gap-3">
 
-                <p class="text-sm text-slate-400 mb-1">
-                    {{ today }}
-                </p>
+                <!-- Tombol buka menu (khusus HP & tablet) -->
+                <button
+                    type="button"
+                    @click="mobileNavOpen = true"
+                    class="lg:hidden flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition hover:bg-slate-200"
+                    aria-label="Buka menu"
+                >
+                    <Bars3Icon class="h-6 w-6" />
+                </button>
 
-                <h1 class="text-xl font-semibold text-slate-700">
-                    Dashboard Administrator
-                </h1>
+                <div class="min-w-0">
+
+                    <p class="truncate text-xs text-slate-400 sm:mb-1 sm:text-sm">
+                        {{ today }}
+                    </p>
+
+                    <h1 class="truncate text-base font-semibold text-slate-700 sm:text-xl">
+                        Dashboard Administrator
+                    </h1>
+
+                </div>
 
             </div>
 
 
             <!-- ================= RIGHT ================= -->
 
-            <div class="flex items-center gap-5">
+            <div class="flex shrink-0 items-center gap-2 sm:gap-5">
 
                 <!-- Notifikasi -->
 
@@ -124,8 +140,8 @@ onUnmounted(() => {
 
                     <div
                         v-if="showNotifMenu"
-                        class="absolute right-0 top-14
-                               w-80
+                        class="fixed left-3 right-3 top-[68px] sm:absolute sm:left-auto sm:right-0 sm:top-14
+                               sm:w-80
                                bg-white
                                rounded-xl
                                shadow-xl
@@ -192,7 +208,7 @@ onUnmounted(() => {
 
                 <!-- Garis Pemisah -->
 
-                <div class="h-10 w-px bg-slate-200">
+                <div class="hidden h-10 w-px bg-slate-200 sm:block">
                 </div>
 
 

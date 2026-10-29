@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { router } from '@inertiajs/vue3'
+import { toast } from '@/lib/toast'
 
 import {
     KeyIcon,
@@ -40,14 +41,14 @@ const formattedTimer = computed(() => {
 const requestOtp = async () => {
     if (isLoadingOtp.value) return
     isLoadingOtp.value = true
-    
+
     try {
         await window.axios.post(route('pegawai.absensi.otp.request'))
-        alert('Kode OTP telah dikirimkan ke notifikasi Anda.')
+        toast.info('Kode OTP telah dikirimkan ke notifikasi Anda.', { title: 'OTP Terkirim' })
         startTimer()
     } catch (err) {
         console.error(err)
-        alert(err.response?.data?.message || 'Gagal meminta OTP.')
+        toast.error(err.response?.data?.message || 'Gagal meminta OTP.')
     } finally {
         isLoadingOtp.value = false
     }
@@ -57,7 +58,7 @@ const startTimer = () => {
     timer.value = 180 // 3 minutes
     if (interval) clearInterval(interval)
     if (notifInterval) clearInterval(notifInterval)
-    
+
     interval = setInterval(() => {
         if (timer.value > 0) {
             timer.value--
@@ -105,7 +106,7 @@ const verifikasiOtp = async () => {
         emit('success', response.data.attendance)
     } catch (err) {
         console.error(err)
-        alert(err.response?.data?.message || 'Verifikasi OTP gagal.')
+        toast.error(err.response?.data?.message || 'Verifikasi OTP gagal.', { title: 'Verifikasi OTP Gagal' })
     }
 }
 
@@ -201,7 +202,7 @@ const handleOtpInput = (event) => {
                     :value="otp"
                     maxlength="6"
                     autocomplete="one-time-code"
-                    placeholder="A7K29P"
+                    placeholder="••••••"
                     @input="handleOtpInput"
                     :disabled="timer === 0"
                 />
@@ -220,7 +221,7 @@ const handleOtpInput = (event) => {
                 Verifikasi OTP
             </button>
         </div>
-        
+
         <div v-else>
             <button
                 class="primary-button"
@@ -393,7 +394,7 @@ const handleOtpInput = (event) => {
 }
 
 .otp-input input {
-    width: 220px;
+    width: min(220px, 100%);
     height: 52px;
 
     box-sizing: border-box;
@@ -415,6 +416,12 @@ const handleOtpInput = (event) => {
     font-weight: 700;
 
     text-transform: uppercase;
+}
+
+.otp-input input::placeholder {
+    color: #c3d3d0;
+
+    font-weight: 400;
 }
 
 .otp-input input:focus {

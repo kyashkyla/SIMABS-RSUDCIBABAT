@@ -1,18 +1,61 @@
 <script setup>
+import { onMounted, onUnmounted } from 'vue'
+import { toast } from '@/lib/toast'
 import {
     ClockIcon,
     ShieldCheckIcon,
 } from '@heroicons/vue/24/outline'
 
-const emit = defineEmits(['approved'])
+const emit = defineEmits(['approved', 'rejected'])
 
-const approveSementara = () => {
-    emit('approved', 'temporary')
+const POLL_INTERVAL_MS = 5000
+
+let timer = null
+let checking = false
+
+/*
+| Cek keputusan admin ke server. Begitu disetujui -> emit 'approved'
+| (temporary / permanent), kalau ditolak -> emit 'rejected'.
+*/
+const checkStatus = async () => {
+    if (checking) return
+    checking = true
+
+    try {
+        const { data } = await window.axios.get(route('pegawai.absensi.status-approval'))
+
+        if (data.status === 'approved') {
+            stopPolling()
+            emit('approved', data.type)
+        } else if (data.status === 'rejected') {
+            stopPolling()
+            toast.error(
+                data.message || 'Pengajuan absensi alternatif Anda ditolak admin.',
+                { title: 'Pengajuan Ditolak' }
+            )
+            emit('rejected')
+        }
+    } catch (err) {
+        // Gagal sesaat (mis. koneksi putus) -> abaikan, coba lagi di polling berikutnya.
+        console.error(err)
+    } finally {
+        checking = false
+    }
 }
 
-const approvePermanen = () => {
-    emit('approved', 'permanent')
+const stopPolling = () => {
+    if (timer) {
+        clearInterval(timer)
+        timer = null
+    }
 }
+
+onMounted(() => {
+    checkStatus()
+    timer = setInterval(checkStatus, POLL_INTERVAL_MS)
+})
+
+onUnmounted(stopPolling)
 </script>
 
 <template>
@@ -77,45 +120,6 @@ const approvePermanen = () => {
                     Setelah lokasi berhasil diverifikasi, sistem
                     akan mengarahkan Anda ke absensi menggunakan OTP.
                 </p>
-
-            </div>
-
-        </div>
-
-
-        <!-- SIMULASI -->
-        <!--
-            SEMENTARA UNTUK TESTING FRONTEND.
-            Nanti bagian ini DIHAPUS ketika sudah terhubung
-            dengan sistem Admin/database.
-        -->
-
-        <div class="simulation">
-
-            <small>
-                SIMULASI FRONTEND
-            </small>
-
-            <p>
-                Bagian ini hanya untuk mengetes response
-                approval dari Admin.
-            </p>
-
-            <div class="simulation-buttons">
-
-                <button
-                    type="button"
-                    @click="approveSementara"
-                >
-                    Test Approval Sementara
-                </button>
-
-                <button
-                    type="button"
-                    @click="approvePermanen"
-                >
-                    Test Approval Permanen
-                </button>
 
             </div>
 
@@ -288,61 +292,6 @@ const approvePermanen = () => {
     font-size: 8px;
 
     line-height: 1.5;
-}
-
-.simulation {
-    max-width: 500px;
-
-    margin: 20px auto 0;
-
-    padding: 12px;
-
-    border: 1px dashed #ccdeda;
-
-    border-radius: 9px;
-
-    background: #f9fcfb;
-}
-
-.simulation small {
-    color: #20a995;
-
-    font-size: 8px;
-    font-weight: 700;
-}
-
-.simulation p {
-    margin: 5px 0 10px;
-
-    color: #899598;
-
-    font-size: 8px;
-}
-
-.simulation-buttons {
-    display: flex;
-
-    justify-content: center;
-
-    gap: 7px;
-
-    flex-wrap: wrap;
-}
-
-.simulation button {
-    padding: 7px 10px;
-
-    border: none;
-
-    border-radius: 6px;
-
-    background: #20ad98;
-
-    color: white;
-
-    font-size: 8px;
-
-    cursor: pointer;
 }
 
 </style>

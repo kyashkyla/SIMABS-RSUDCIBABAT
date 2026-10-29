@@ -3,8 +3,12 @@
 namespace App\Http\Controllers\Pegawai;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
@@ -31,11 +35,86 @@ class DashboardController extends Controller
             'employee' => [
                 ...$employee->toArray(),
                 'photo_url' => $employee->photo ? Storage::url($employee->photo) : null,
+                // Status verifikasi wajah dihitung dari data asli: ada foto
+                // referensi = terverifikasi, tanggalnya dari kapan foto itu
+                // terakhir didaftarkan/diganti admin.
+                'face_verified' => (bool) $employee->photo,
+                'face_updated_label' => $employee->face_updated_at
+                    ? $employee->face_updated_at->locale('id')->translatedFormat('j M Y')
+                    : null,
                 'shift_details' => $employee->shiftDefinition(),
             ],
             'todayAttendance' => $this->formatTodayAttendance($employee),
             'monthlySummary' => $this->buildMonthlySummary($employee, $today),
             'recentActivities' => $this->buildRecentActivities($employee),
+        ]);
+    }
+
+    /**
+     * POST /pegawai/dashboard/alamat
+     * Reverse geocoding: ubah koordinat GPS pegawai jadi alamat teks
+     * (jalan, kelurahan, kecamatan, kota) lewat Nominatim/OpenStreetMap.
+     *
+     * Dipanggil dari server (bukan langsung dari browser) supaya:
+     * - User-Agent bisa diset sesuai aturan pemakaian Nominatim,
+     * - hasilnya bisa di-cache (koordinat dibulatkan ~11 meter) sehingga
+     *   tidak membanjiri layanan gratis tersebut.
+     *
+     * Kalau gagal, address = null dan dashboard menampilkan koordinat.
+     */
+    public function reverseGeocode(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'latitude' => ['required', 'numeric', 'between:-90,90'],
+            'longitude' => ['required', 'numeric', 'between:-180,180'],
+        ]);
+
+        $lat = round((float) $data['latitude'], 4);
+        $lng = round((float) $data['longitude'], 4);
+
+        $address = Cache::remember("revgeo_{$lat}_{$lng}", now()->addHours(6), function () use ($lat, $lng) {
+            try {
+                $response = Http::timeout(6)
+                    ->withHeaders([
+                        'User-Agent' => 'SIMABS-RSUD-Cibabat/1.0',
+                        'Accept-Language' => 'id',
+                    ])
+                    ->get('https://nominatim.openstreetmap.org/reverse', [
+                        'format' => 'jsonv2',
+                        'lat' => $lat,
+                        'lon' => $lng,
+                        'zoom' => 18,
+                        'addressdetails' => 1,
+                    ]);
+
+                if (!$response->successful()) {
+                    return null;
+                }
+
+                $json = $response->json();
+                $a = $json['address'] ?? [];
+
+                $jalan = trim(($a['road'] ?? '') . ' ' . ($a['house_number'] ?? ''));
+
+                $parts = array_values(array_unique(array_filter([
+                    $jalan,
+                    $a['village'] ?? $a['suburb'] ?? $a['neighbourhood'] ?? null,
+                    $a['city_district'] ?? null,
+                    $a['city'] ?? $a['town'] ?? $a['municipality'] ?? $a['county'] ?? null,
+                ])));
+
+                if (!empty($parts)) {
+                    return implode(', ', $parts);
+                }
+
+                return $json['display_name'] ?? null;
+            } catch (\Throwable $e) {
+                return null;
+            }
+        });
+
+        return response()->json([
+            'address' => $address,
         ]);
     }
 

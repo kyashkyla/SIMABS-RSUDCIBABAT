@@ -133,6 +133,8 @@ class EmployeeController extends Controller
                 'shift' => $validated['shift'],
                 'photo' => $photoPath,
                 'face_id_registered' => (bool) $photoPath,
+                // Tanggal foto wajah (acuan Face ID) pertama kali didaftarkan
+                'face_updated_at' => $photoPath ? now() : null,
             ]);
         });
 
@@ -195,6 +197,7 @@ class EmployeeController extends Controller
         ]);
 
         $photoPath = $employee->photo;
+        $faceUpdatedAt = $employee->face_updated_at;
 
         if ($request->hasFile('photo')) {
             // Hapus foto lama supaya storage tidak menumpuk file lama
@@ -203,12 +206,16 @@ class EmployeeController extends Controller
             }
 
             $photoPath = $request->file('photo')->store('employee-photos', 'public');
+
+            // Foto wajah diganti -> catat tanggal pembaruannya.
+            $faceUpdatedAt = now();
         }
 
         $employee->update([
             ...collect($validated)->except('photo')->all(),
             'photo' => $photoPath,
             'face_id_registered' => (bool) $photoPath,
+            'face_updated_at' => $photoPath ? $faceUpdatedAt : null,
         ]);
 
         return redirect()

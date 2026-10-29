@@ -667,7 +667,13 @@ const lanjut = () => {
 .map-container {
     position: relative;
 
-    height: 350px;
+    /* Bikin stacking context sendiri supaya z-index internal Leaflet
+       (pane 400, kontrol zoom 1000) tidak "bocor" ke luar dan menutupi
+       notifikasi/toast (z-index 20) maupun header. */
+    isolation: isolate;
+    z-index: 0;
+
+    height: min(350px, 55vh); /* DIUBAH (sebelumnya: height: 350px;) */
 
     margin: 20px 0;
 
@@ -676,6 +682,15 @@ const lanjut = () => {
     border-radius: 14px;
 
     background: #edf4f2;
+}
+
+/* Khusus tampilan mobile: peta diperkecil. Desktop (>= 641px) tetap 350px. */
+@media (max-width: 640px) {
+    .map-container {
+        height: min(210px, 32vh);
+        margin: 14px 0;
+        border-radius: 12px;
+    }
 }
 
 .leaflet-mount {

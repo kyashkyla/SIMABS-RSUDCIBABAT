@@ -55,7 +55,7 @@ const rows = computed(() =>
     <PegawaiLayout>
 
         <div>
-            <h1 class="text-2xl font-bold">
+            <h1 class="text-xl font-bold sm:text-2xl">
                 Riwayat Absensi
             </h1>
 
@@ -80,19 +80,19 @@ const rows = computed(() =>
 
                     <thead class="bg-slate-50 text-xs uppercase text-slate-500">
                         <tr>
-                            <th class="px-5 py-4">
+                            <th class="whitespace-nowrap px-3 py-3 sm:px-5 sm:py-4">
                                 Tanggal
                             </th>
 
-                            <th class="px-5 py-4">
+                            <th class="whitespace-nowrap px-3 py-3 sm:px-5 sm:py-4">
                                 Jam Masuk
                             </th>
 
-                            <th class="px-5 py-4">
+                            <th class="whitespace-nowrap px-3 py-3 sm:px-5 sm:py-4">
                                 Metode
                             </th>
 
-                            <th class="px-5 py-4">
+                            <th class="whitespace-nowrap px-3 py-3 sm:px-5 sm:py-4">
                                 Status
                             </th>
                         </tr>
@@ -106,19 +106,19 @@ const rows = computed(() =>
                             class="border-t border-slate-100"
                         >
 
-                            <td class="px-5 py-4 font-medium">
+                            <td class="whitespace-nowrap px-3 py-3 font-medium sm:px-5 sm:py-4">
                                 {{ item.dateLabel }}
                             </td>
 
-                            <td class="px-5 py-4">
+                            <td class="whitespace-nowrap px-3 py-3 sm:px-5 sm:py-4">
                                 {{ item.check_in_at ?? '—' }}
                             </td>
 
-                            <td class="px-5 py-4 text-slate-500">
+                            <td class="whitespace-nowrap px-3 py-3 text-slate-500 sm:px-5 sm:py-4">
                                 {{ item.methodLabel }}
                             </td>
 
-                            <td class="px-5 py-4">
+                            <td class="whitespace-nowrap px-3 py-3 sm:px-5 sm:py-4">
 
                                 <span
                                     v-if="item.status === 'hadir'"

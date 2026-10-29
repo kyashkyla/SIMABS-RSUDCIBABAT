@@ -106,6 +106,11 @@ Route::middleware(['auth', 'role:pegawai'])->group(function () {
     Route::get('/pegawai/dashboard', [PegawaiDashboardController::class, 'index'])
         ->name('pegawai.dashboard');
 
+    // Reverse geocoding (koordinat GPS -> alamat) untuk kartu lokasi dashboard
+    Route::post('/pegawai/dashboard/alamat', [PegawaiDashboardController::class, 'reverseGeocode'])
+        ->middleware('throttle:20,1')
+        ->name('pegawai.dashboard.alamat');
+
     // Profile Saya pegawai
     Route::get('/pegawai/profile', [PegawaiProfileController::class, 'show'])
         ->name('pegawai.profile');
@@ -127,6 +132,10 @@ Route::middleware(['auth', 'role:pegawai'])->group(function () {
 
     Route::post('/pegawai/absensi/otp/request', [PegawaiAttendanceController::class, 'requestOtp'])
         ->name('pegawai.absensi.otp.request');
+
+    // Polling status pengajuan absensi alternatif (dipakai halaman "Menunggu Persetujuan Admin")
+    Route::get('/pegawai/absensi/status-approval', [PegawaiAttendanceController::class, 'approvalStatus'])
+        ->name('pegawai.absensi.status-approval');
 
     Route::get('/pegawai/riwayat-absensi', [PegawaiAttendanceController::class, 'riwayat'])
         ->name('pegawai.riwayat');

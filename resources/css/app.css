@@ -1,3 +1,32 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ============================================================
+   MOBILE BASE (iOS Safari & Android Chrome)
+   ============================================================ */
+
+html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+body {
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* 100vh tertutup toolbar browser HP, dvh mengikuti layar yang terlihat */
+.min-h-screen {
+    min-height: 100vh;
+    min-height: 100dvh;
+}
+
+/* iOS Safari zoom otomatis kalau font input < 16px */
+@media (max-width: 767px) {
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+    select,
+    textarea {
+        font-size: 16px;
+    }
+}

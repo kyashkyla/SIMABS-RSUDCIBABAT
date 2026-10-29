@@ -5,6 +5,8 @@ import { createInertiaApp } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createApp, h } from 'vue';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy';
+import ToastContainer from '@/Components/ToastContainer.vue';
+import ConfirmDialog from '@/Components/ConfirmDialog.vue';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -16,7 +18,10 @@ createInertiaApp({
             import.meta.glob('./Pages/**/*.vue'),
         ),
     setup({ el, App, props, plugin }) {
-        return createApp({ render: () => h(App, props) })
+        // Toast & dialog konfirmasi dipasang global, dipakai admin maupun pegawai.
+        return createApp({
+            render: () => [h(App, props), h(ToastContainer), h(ConfirmDialog)],
+        })
             .use(plugin)
             .use(ZiggyVue)
             .mount(el);

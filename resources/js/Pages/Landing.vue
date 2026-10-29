@@ -6,7 +6,7 @@ import { User, Shield, Building2 } from 'lucide-vue-next'
 <template>
     <Head title="SIMABS" />
 
-    <div class="min-h-screen bg-slate-50 flex flex-col items-center justify-center px-6">
+    <div class="min-h-screen bg-slate-50 flex flex-col items-center justify-center px-4 py-10 sm:px-6">
 
         <!-- Logo -->
         <div
@@ -17,11 +17,11 @@ import { User, Shield, Building2 } from 'lucide-vue-next'
 
         <!-- Title -->
 
-        <h1 class="text-6xl font-extrabold text-slate-800">
+        <h1 class="text-4xl sm:text-6xl font-extrabold text-slate-800">
             SIMABS
         </h1>
 
-        <p class="mt-2 text-emerald-500 text-2xl font-semibold">
+        <p class="mt-2 text-center text-emerald-500 text-lg sm:text-2xl font-semibold">
             Sistem Informasi Manajemen Absensi
         </p>
 
@@ -31,12 +31,12 @@ import { User, Shield, Building2 } from 'lucide-vue-next'
 
         <!-- Card -->
 
-        <div class="grid md:grid-cols-2 gap-8 mt-14">
+        <div class="grid w-full justify-items-center md:w-auto md:grid-cols-2 gap-6 sm:gap-8 mt-10 sm:mt-14">
 
             <!-- Pegawai -->
 
             <div
-                class="bg-white rounded-3xl shadow-xl p-10 w-[360px] hover:scale-105 duration-300">
+                class="bg-white rounded-3xl shadow-xl p-8 sm:p-10 w-full max-w-[360px] hover:scale-105 duration-300">
 
                 <div
                     class="w-16 h-16 bg-emerald-500 rounded-2xl flex items-center justify-center mx-auto">
@@ -71,7 +71,7 @@ import { User, Shield, Building2 } from 'lucide-vue-next'
             <!-- Admin -->
 
             <div
-                class="bg-gradient-to-br from-emerald-500 to-teal-400 text-white rounded-3xl shadow-xl p-10 w-[360px] hover:scale-105 duration-300">
+                class="bg-gradient-to-br from-emerald-500 to-teal-400 text-white rounded-3xl shadow-xl p-8 sm:p-10 w-full max-w-[360px] hover:scale-105 duration-300">
 
                 <div
                     class="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto">
@@ -113,4 +113,5 @@ import { User, Shield, Building2 } from 'lucide-vue-next'
         </p>
 
     </div>
+
 </template>

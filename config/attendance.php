@@ -43,4 +43,9 @@ return [
     // Absen masuk yang masuk dalam jendela tapi lewat sekian menit dari jam
     // mulai shift tetap diterima, cuma statusnya "terlambat" bukan "hadir".
     'late_after_minutes' => (int) env('ATTENDANCE_LATE_AFTER_MINUTES', 15),
+
+    // Kalau sudah lewat sekian menit dari JAM MULAI jendela absen (masuk atau
+    // pulang), pesan penolakan berubah jadi pesan umum tanpa menyebut
+    // "masuk"/"pulang": "Anda tidak dapat melakukan absen karena bukan jamnya."
+    'generic_closed_after_minutes' => (int) env('ATTENDANCE_GENERIC_CLOSED_AFTER_MINUTES', 60),
 ];
